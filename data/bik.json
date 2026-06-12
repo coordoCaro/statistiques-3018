@@ -1,0 +1,80 @@
+{
+  "_meta": {
+    "titre": "Données BIK / Insafe — Q1 2026 (déclaratif, séparé du global interne)",
+    "source": "Helpline_Assessment_Platform_Q1_2026.xlsx",
+    "trimestre": "Q1 2026",
+    "avertissement": "Données déclaratives BIK/Insafe. NE PAS additionner ni mélanger avec l'activité interne. Catégories non exclusives."
+  },
+  "operationnel": {
+    "type_helpline": "General",
+    "part_general_pct": 45,
+    "conseillers_total": 23,
+    "conseillers_nouveaux": 3
+  },
+  "contacts_total_declares": 9515,
+  "public_cible": {
+    "hommes": 2109,
+    "femmes": 4906,
+    "genre_non_precise": 2500,
+    "enfants_5_10": 283,
+    "enfants_11_13": 1346,
+    "adolescents_14_18": 2442,
+    "parents": 1729,
+    "enseignants": 87,
+    "travailleurs_sociaux": 17
+  },
+  "categories_bik_non_exclusives": {
+    "Cyber-bullying": 4415,
+    "NCSII": 804,
+    "OSCEC_sextorsion": 618,
+    "Data privacy": 294,
+    "Technical settings": 230,
+    "Hate speech": 215,
+    "Suicide": 204,
+    "Excessive use": 188,
+    "Self-harm": 146,
+    "e-crime": 122,
+    "Gaming": 112,
+    "Media literacy": 92,
+    "Online reputation": 85,
+    "Grooming": 81,
+    "Potentially harmful content": 80,
+    "Pornography": 53,
+    "Love/relationships/sexuality": 24,
+    "Fake news": 23,
+    "Radicalisation/terrorism": 12,
+    "Advertising": 0
+  },
+  "canaux": {
+    "Telephone": 4654,
+    "Chat": 4318,
+    "Email": 514,
+    "Online form": 2,
+    "SMS": 0,
+    "Other": 12
+  },
+  "ou_le_probleme_a_eu_lieu": {
+    "Snapchat": 629,
+    "TikTok": 607,
+    "Instagram": 344,
+    "YouTube": 55,
+    "Facebook": 43,
+    "X": 21,
+    "Google": 25,
+    "Messaging services": 373,
+    "Video games": 160,
+    "Metaverse": 27,
+    "Websites": 17
+  },
+  "dsa": {
+    "trusted_flagger": "Yes",
+    "designe_depuis": "2024-11-04",
+    "signalements_trimestre": 1858
+  },
+  "narratif": {
+    "commentaire_categories": "Migration CRM Q1 2026 : multi-catégories par contact, total catégories > total contacts ; comparaison aux trimestres précédents plus difficile.",
+    "tendances": "Nombre significatif de situations graves visant des mineures (coercition psychologique, incitation à l'automutilation, violences sexuelles), entraînant un volume inédit de signalements au procureur (art. 40 CPP).",
+    "success_story": "Lancement du nouveau système CRM le 1er février 2026 (codage multi-catégories, suivi plateformes plus fin, meilleur flux de travail).",
+    "difficultes": "Charge émotionnelle croissante des écoutant·es liée à des situations sévères ; renforcement des débriefings et mise en place d'une intervision entre pairs."
+  }
+}

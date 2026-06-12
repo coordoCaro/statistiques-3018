@@ -1,0 +1,48 @@
+{
+  "_meta": {
+    "titre": "Tchat — Embedded Messaging (Salesforce)",
+    "periode": "01/02/2026 au 31/05/2026",
+    "source": "Stats_Tchats_fev-mai_2026.xlsx (export Conversation Entries)",
+    "perimetre": "tchats web et application 3018, périmètre non distingué dans les données sources"
+  },
+  "synthese_periode": {
+    "tchats_recus": 11550,
+    "tchats_traites": 5883,
+    "tchats_abandonnes": 5667,
+    "taux_prise_pct": 50.9,
+    "attente_mediane_min": 43.5,
+    "attente_moyenne_min": 172.9,
+    "duree_mediane_session_min": 122.8
+  },
+  "par_mois": [
+    {
+      "mois": "2026-02",
+      "tchats_recus": 1648,
+      "tchats_traites": 884,
+      "tchats_abandonnes": 764,
+      "taux_prise_pct": 53.6
+    },
+    {
+      "mois": "2026-03",
+      "tchats_recus": 3843,
+      "tchats_traites": 1732,
+      "tchats_abandonnes": 2111,
+      "taux_prise_pct": 45.1
+    },
+    {
+      "mois": "2026-04",
+      "tchats_recus": 2878,
+      "tchats_traites": 1549,
+      "tchats_abandonnes": 1329,
+      "taux_prise_pct": 53.8
+    },
+    {
+      "mois": "2026-05",
+      "tchats_recus": 3181,
+      "tchats_traites": 1718,
+      "tchats_abandonnes": 1463,
+      "taux_prise_pct": 54.0
+    }
+  ],
+  "note_methodologique": "Janvier 2026 absent de l'export (démarre au 01/02). Répartition nominative par écoutant non disponible (anonymisée dans l'export). Web et application non distinguables (même point d'entrée Salesforce)."
+}

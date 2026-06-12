@@ -1,0 +1,100 @@
+{
+  "_meta": {
+    "titre": "Téléphone — exports 3CX mensuels",
+    "periode": "janvier à mai 2026",
+    "source": "{JAN..MAY}_detailed_queue_statistics.csv (statistiques détaillées de la file d'attente, un fichier par mois)",
+    "mapping": {
+      "appels_recus": "Calls Total",
+      "appels_decroches": "Calls Answered",
+      "appels_abandonnes": "Calls Abandoned",
+      "taux_reponse": "Answered % = Answered/Total",
+      "temps_total": "Talk Time Total",
+      "duree_moyenne": "Talk Time Mean"
+    },
+    "indicateur_prioritaire": "appels décrochés"
+  },
+  "synthese_periode": {
+    "appels_recus": 46868,
+    "appels_decroches": 9923,
+    "appels_abandonnes": 36945,
+    "taux_reponse_pct": 21.2,
+    "temps_total_conversation": "2445:28:54"
+  },
+  "par_mois": [
+    {
+      "mois": "2026-01",
+      "appels_recus": 10433,
+      "appels_decroches": 2072,
+      "appels_abandonnes": 8361,
+      "taux_reponse_pct": 19.9,
+      "temps_total_conversation": "570:39:45",
+      "duree_moyenne_appel": "00:16:31"
+    },
+    {
+      "mois": "2026-02",
+      "appels_recus": 9528,
+      "appels_decroches": 1749,
+      "appels_abandonnes": 7779,
+      "taux_reponse_pct": 18.4,
+      "temps_total_conversation": "441:10:09",
+      "duree_moyenne_appel": "00:15:08"
+    },
+    {
+      "mois": "2026-03",
+      "appels_recus": 11514,
+      "appels_decroches": 2052,
+      "appels_abandonnes": 9462,
+      "taux_reponse_pct": 17.8,
+      "temps_total_conversation": "497:41:09",
+      "duree_moyenne_appel": "00:14:33"
+    },
+    {
+      "mois": "2026-04",
+      "appels_recus": 7259,
+      "appels_decroches": 1990,
+      "appels_abandonnes": 5269,
+      "taux_reponse_pct": 27.4,
+      "temps_total_conversation": "469:57:30",
+      "duree_moyenne_appel": "00:14:10"
+    },
+    {
+      "mois": "2026-05",
+      "appels_recus": 8134,
+      "appels_decroches": 2060,
+      "appels_abandonnes": 6074,
+      "taux_reponse_pct": 25.3,
+      "temps_total_conversation": "466:00:21",
+      "duree_moyenne_appel": "00:13:34"
+    }
+  ],
+  "par_file_periode": [
+    {
+      "file_3cx": "900 - 1-3018 Mineur",
+      "libelle": "3018 Mineur (file principale)",
+      "role_suppose": "File principale 3018 mineurs",
+      "incluse_total": true,
+      "appels_recus": 37065,
+      "appels_decroches": 8100,
+      "appels_abandonnes": 28965
+    },
+    {
+      "file_3cx": "903 - 2-Violence Numerique (9h-17h)",
+      "libelle": "Violence numérique (9h-17h)",
+      "role_suppose": "Violence numérique, créneau 9h-17h",
+      "incluse_total": true,
+      "appels_recus": 2065,
+      "appels_decroches": 587,
+      "appels_abandonnes": 1478
+    },
+    {
+      "file_3cx": "902 - 4-3018 Mineur apres 17h",
+      "libelle": "3018 Mineur après 17h",
+      "role_suppose": "3018 mineurs après 17h",
+      "incluse_total": true,
+      "appels_recus": 7738,
+      "appels_decroches": 1236,
+      "appels_abandonnes": 6502
+    }
+  ],
+  "note_methodologique": "Données mensuelles désormais disponibles : les appels décrochés ne sont plus déduits d'un agrégat. 'Calls Total' reste une base file (un appel passant par plusieurs files peut être recompté) ; conservée ici comme 'appels reçus' conformément au mapping fourni."
+}

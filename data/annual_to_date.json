@@ -1,0 +1,36 @@
+{
+  "_meta": {
+    "titre": "Cumul annuel à date — 2026",
+    "annee": 2026,
+    "arret": "12/06/2026",
+    "avertissement": "Année incomplète. Les périodes diffèrent selon les sources : ne pas additionner aveuglément. Voir methodology.json."
+  },
+  "telephone": {
+    "periode": "janvier-mai 2026",
+    "appels_recus": 46868,
+    "appels_decroches": 9923,
+    "appels_abandonnes": 36945,
+    "taux_reponse_pct": 21.2
+  },
+  "tchat": {
+    "periode": "février-mai 2026 (janvier absent)",
+    "tchats_recus": 11550,
+    "tchats_traites": 5883,
+    "taux_prise_pct": 50.9
+  },
+  "signalements_trusted_flagger": {
+    "periode": "janvier-mai 2026",
+    "total": 3803
+  },
+  "sorties_anonymat": {
+    "periode": "janvier-mai 2026",
+    "total": 1244
+  },
+  "volume_activite_traite": {
+    "valeur_indicative_hors_emails": 15806,
+    "note": "Indicatif : appels décrochés janv-mai (9923) + tchats traités fév-mai (5883). Janvier absent côté tchat, emails exclus. Ne pas présenter comme un total consolidé."
+  },
+  "comparaison_annuelle": {
+    "note": "Comparaison cumul janv-mai impossible en 2026 (seul janvier consolidé tous canaux dans le tableau mensuel). Comparaison limitée à janvier."
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "_meta": {
+    "titre": "Activité trimestrielle 3018 — 2026",
+    "trimestres_2026": {
+      "Q1": "janv-fév-mars",
+      "Q2": "avril-mai-juin",
+      "Q3": "juil-août-sept",
+      "Q4": "oct-nov-déc"
+    },
+    "avertissement": "Téléphone complet sur Q1. Tchat Q1 partiel (janvier absent). Q2 en cours : juin partiel (arrêté au 12/06/2026)."
+  },
+  "trimestres": [
+    {
+      "trimestre": "Q1 2026",
+      "statut": "téléphone complet, tchat partiel",
+      "appels_recus": 31475,
+      "appels_decroches": 5873,
+      "appels_abandonnes": 25602,
+      "taux_reponse_appels_pct": 18.7,
+      "tchats_recus": 5491,
+      "tchats_traites": 2616,
+      "tchat_note": "janvier absent : tchat Q1 = février + mars uniquement",
+      "signalements_trusted_flagger": 1846,
+      "sorties_anonymat": 621,
+      "observation": "Téléphone consolidé sur le trimestre. Tchat partiel (sans janvier), donc volume d'activité traité non consolidé au trimestre."
+    },
+    {
+      "trimestre": "Q2 2026",
+      "statut": "en cours / incomplet (juin partiel)",
+      "appels_recus_avril_mai": 15393,
+      "appels_decroches_avril_mai": 4050,
+      "appels_abandonnes_avril_mai": 11343,
+      "taux_reponse_appels_avril_mai_pct": 26.3,
+      "tchats_recus_avril_mai": 6059,
+      "tchats_traites_avril_mai": 3267,
+      "signalements_trusted_flagger_avril_mai": 1957,
+      "signalements_juin_partiel": 350,
+      "sorties_anonymat_avril_mai": 623,
+      "sorties_juin_partiel": 158,
+      "observation": "Trimestre incomplet : juin arrêté au 12/06/2026. Chiffres avril-mai uniquement."
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "_meta": {
+    "titre": "Sorties d'anonymat / remontées institutionnelles — 2026",
+    "source": "2026 - Sorties d'anonymat.xlsx",
+    "date_reference": "Date d'envoi du signalement"
+  },
+  "cumul_janvier_mai_2026": 1244,
+  "par_mois_2026": [
+    {
+      "mois": "2026-01",
+      "sorties": 219,
+      "statut": "consolidé"
+    },
+    {
+      "mois": "2026-02",
+      "sorties": 161,
+      "statut": "consolidé"
+    },
+    {
+      "mois": "2026-03",
+      "sorties": 241,
+      "statut": "consolidé"
+    },
+    {
+      "mois": "2026-04",
+      "sorties": 321,
+      "statut": "consolidé"
+    },
+    {
+      "mois": "2026-05",
+      "sorties": 302,
+      "statut": "consolidé"
+    },
+    {
+      "mois": "2026-06",
+      "sorties": 158,
+      "statut": "partiel"
+    }
+  ],
+  "par_trimestre_2026": {
+    "Q1_janv_mars": 621,
+    "Q2_avril_mai_partiel": 623,
+    "juin_partiel": 158
+  },
+  "par_destinataire_janv_mai": [
+    {
+      "destinataire": "Harcèlement scolaire (Éduc. nationale / Agriculture)",
+      "sorties": 1028
+    },
+    {
+      "destinataire": "IPS (Procureur / CRIP / OFMIN / OCRTEH)",
+      "sorties": 172
+    },
+    {
+      "destinataire": "PHAROS",
+      "sorties": 43
+    },
+    {
+      "destinataire": "Autres (ex. Pompiers)",
+      "sorties": 1
+    }
+  ],
+  "detail_par_mois_destinataire": {
+    "harcelement_scolaire": {
+      "2026-01": 211,
+      "2026-02": 144,
+      "2026-03": 200,
+      "2026-04": 250,
+      "2026-05": 223
+    },
+    "ips": {
+      "2026-01": 4,
+      "2026-02": 16,
+      "2026-03": 32,
+      "2026-04": 56,
+      "2026-05": 64
+    },
+    "pharos": {
+      "2026-01": 4,
+      "2026-02": 1,
+      "2026-03": 9,
+      "2026-04": 15,
+      "2026-05": 14
+    },
+    "autres": {
+      "2026-01": null,
+      "2026-02": null,
+      "2026-03": null,
+      "2026-04": null,
+      "2026-05": 1
+    }
+  },
+  "sous_destinataires_ips": {
+    "note": "Catégories non exclusives (une situation peut viser plusieurs autorités) : ne pas additionner.",
+    "Procureur": 160,
+    "CRIP": 41,
+    "OFMIN": 28,
+    "OCRTEH": 1
+  },
+  "note_methodologique": "4 lignes mal datées (année 2029) et 29 lignes sans date dans l'onglet Harcèlement scolaire, 7 sans date dans IPS : exclues du comptage mensuel. Aucune donnée personnelle extraite."
+}

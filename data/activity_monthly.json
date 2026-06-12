@@ -1,0 +1,125 @@
+{
+  "_meta": {
+    "titre": "Activité mensuelle 3018 — 2026",
+    "periode": "janvier à mai 2026",
+    "unite_taux": "pourcentage, 1 décimale",
+    "valeur_manquante": "null = donnée non disponible",
+    "sources": [
+      "{JAN..MAY}_detailed_queue_statistics.csv (téléphone mensuel)",
+      "Stats_Tchats_fev-mai_2026.xlsx (tchat fév-mai)",
+      "3018 - Tableau d'activité mensuelle.xlsx (janvier consolidé + historique)",
+      "Signalements RS - 2026.xlsx",
+      "2026 - Sorties d'anonymat.xlsx"
+    ],
+    "avertissement": "Téléphone désormais mensuel (janv-mai). Tchat fév-mai (janvier absent). Volume janvier = consolidé tous canaux ; volume fév-mai = appels décrochés + tchats traités hors emails. Voir methodology.json."
+  },
+  "mois": [
+    {
+      "mois": "2026-01",
+      "libelle": "Janvier 2026",
+      "appels_recus": 10433,
+      "appels_decroches": 2072,
+      "appels_abandonnes": 8361,
+      "taux_reponse_appels_pct": 19.9,
+      "tchats_recus": null,
+      "tchats_traites": null,
+      "taux_prise_tchat_pct": null,
+      "volume_activite_traite": 3056,
+      "volume_note": "consolidé tous canaux (tableau mensuel) ; tchat de janvier non disponible séparément",
+      "signalements_trusted_flagger": 625,
+      "sorties_anonymat": 219,
+      "sollicitations_entrantes": 14770,
+      "observation": "Téléphone mensuel disponible. Tchat indisponible en janvier (export tchat démarre le 01/02). Volume = chiffre consolidé tous canaux du tableau mensuel."
+    },
+    {
+      "mois": "2026-02",
+      "libelle": "Février 2026",
+      "appels_recus": 9528,
+      "appels_decroches": 1749,
+      "appels_abandonnes": 7779,
+      "taux_reponse_appels_pct": 18.4,
+      "tchats_recus": 1648,
+      "tchats_traites": 884,
+      "taux_prise_tchat_pct": 53.6,
+      "volume_activite_traite": 2633,
+      "volume_note": "appels décrochés + tchats traités, hors emails",
+      "signalements_trusted_flagger": 606,
+      "sorties_anonymat": 161,
+      "sollicitations_entrantes": null,
+      "observation": "Téléphone et tchat mensuels disponibles. Volume d'activité traité = appels décrochés + tchats traités (hors emails)."
+    },
+    {
+      "mois": "2026-03",
+      "libelle": "Mars 2026",
+      "appels_recus": 11514,
+      "appels_decroches": 2052,
+      "appels_abandonnes": 9462,
+      "taux_reponse_appels_pct": 17.8,
+      "tchats_recus": 3843,
+      "tchats_traites": 1732,
+      "taux_prise_tchat_pct": 45.1,
+      "volume_activite_traite": 3784,
+      "volume_note": "appels décrochés + tchats traités, hors emails",
+      "signalements_trusted_flagger": 615,
+      "sorties_anonymat": 241,
+      "sollicitations_entrantes": null,
+      "observation": "Téléphone et tchat mensuels disponibles. Volume d'activité traité = appels décrochés + tchats traités (hors emails)."
+    },
+    {
+      "mois": "2026-04",
+      "libelle": "Avril 2026",
+      "appels_recus": 7259,
+      "appels_decroches": 1990,
+      "appels_abandonnes": 5269,
+      "taux_reponse_appels_pct": 27.4,
+      "tchats_recus": 2878,
+      "tchats_traites": 1549,
+      "taux_prise_tchat_pct": 53.8,
+      "volume_activite_traite": 3539,
+      "volume_note": "appels décrochés + tchats traités, hors emails",
+      "signalements_trusted_flagger": 885,
+      "sorties_anonymat": 321,
+      "sollicitations_entrantes": null,
+      "observation": "Téléphone et tchat mensuels disponibles. Volume d'activité traité = appels décrochés + tchats traités (hors emails)."
+    },
+    {
+      "mois": "2026-05",
+      "libelle": "Mai 2026",
+      "appels_recus": 8134,
+      "appels_decroches": 2060,
+      "appels_abandonnes": 6074,
+      "taux_reponse_appels_pct": 25.3,
+      "tchats_recus": 3181,
+      "tchats_traites": 1718,
+      "taux_prise_tchat_pct": 54.0,
+      "volume_activite_traite": 3778,
+      "volume_note": "appels décrochés + tchats traités, hors emails",
+      "signalements_trusted_flagger": 1072,
+      "sorties_anonymat": 302,
+      "sollicitations_entrantes": null,
+      "observation": "Téléphone et tchat mensuels disponibles. Volume d'activité traité = appels décrochés + tchats traités (hors emails)."
+    }
+  ],
+  "comparaison_historique_janvier": {
+    "note": "Seul janvier est consolidé tous canaux en 2026 ; comparaison annuelle limitée à ce mois.",
+    "sollicitations": {
+      "2024": 13319,
+      "2025": 20073,
+      "2026": 14770
+    },
+    "contacts_traites": {
+      "2024": 4245,
+      "2025": 3828,
+      "2026": 3056
+    },
+    "taux_reponse_pct": {
+      "2024": 31.9,
+      "2025": 19.1,
+      "2026": 22.0
+    },
+    "evolution_2026_vs_2025": {
+      "sollicitations_pct": -26.4,
+      "contacts_traites_pct": -20.2
+    }
+  }
+}

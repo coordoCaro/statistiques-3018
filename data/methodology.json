@@ -1,0 +1,91 @@
+{
+  "_meta": {
+    "titre": "Méthodologie et limites — reporting 3018",
+    "date_generation": "2026-06-12",
+    "principe": "Aucune extrapolation. Données manquantes = null ou n.d. Aucune donnée personnelle dans les JSON."
+  },
+  "fichiers_utilises": [
+    {
+      "fichier": "3018 - Tableau d'activité mensuelle.xlsx",
+      "usage": "Référence consolidée + comparaisons historiques",
+      "periode": "2024, 2025 (janv-mai) ; 2026 : janvier seul",
+      "limite": "Pour 2026, seul janvier est rempli ; fév-mai vides."
+    },
+    {
+      "fichier": "detailed_queue_statistics.csv / queue_performance.csv / call_distribution.csv",
+      "usage": "Téléphone (3CX)",
+      "periode": "01/01 au 30/05/2026",
+      "limite": "Agrégé sur la période ; pas de décrochés par mois. Deux bases d'appels reçus divergentes."
+    },
+    {
+      "fichier": "Stats_Tchats_fev-mai_2026.xlsx",
+      "usage": "Tchat",
+      "periode": "01/02 au 31/05/2026",
+      "limite": "Janvier absent. Web/app non distingués. Écoutants non nominatifs."
+    },
+    {
+      "fichier": "Signalements RS - 2026.xlsx",
+      "usage": "Signalements Trusted Flagger",
+      "periode": "signalements 2026 (juin partiel)",
+      "limite": "8 lignes 2025 + 42 sans date dans les répartitions ; libellés de décision non normalisés."
+    },
+    {
+      "fichier": "2026 - Sorties d'anonymat.xlsx",
+      "usage": "Remontées institutionnelles",
+      "periode": "janv-juin 2026 (juin partiel)",
+      "limite": "4 lignes mal datées (2029), 36 lignes sans date exclues du mensuel."
+    },
+    {
+      "fichier": "Helpline_Assessment_Platform_Q1_2026.xlsx",
+      "usage": "BIK / Insafe (séparé)",
+      "periode": "Q1 2026",
+      "limite": "Déclaratif ; catégories non exclusives ; ne pas mélanger au global interne."
+    }
+  ],
+  "regles_de_calcul": {
+    "taux_reponse_telephone": "appels décrochés / appels reçus × 100",
+    "taux_prise_tchat": "tchats traités / tchats reçus × 100",
+    "volume_activite_traite": "appels décrochés + tchats traités + emails traités (emails exclus ici, faute de source exploitable)",
+    "arrondi": "pourcentages à 1 décimale",
+    "non_calcul": "aucun taux calculé si dénominateur absent, nul ou périmètre incertain"
+  },
+  "donnees_manquantes": [
+    "Emails : aucune source exploitable → exclus du volume d'activité traité.",
+    "Tchat janvier 2026 : absent de l'export (démarre au 01/02).",
+    "Volume d'activité traité janvier : pris du tableau mensuel (tous canaux) ; fév-mai = appels décrochés + tchats traités hors emails (périmètres légèrement différents).",
+    "Cumul sollicitations/contacts traités janv-mai 2026 : impossible (seul janvier consolidé)."
+  ],
+  "ecarts_entre_sources": [
+    {
+      "sujet": "Appels reçus (téléphone)",
+      "ecart": "'Calls Total' 3CX = base file ; un appel passant par plusieurs files peut être recompté.",
+      "source_retenue": "Mapping fourni par l'utilisateur : Calls Total = appels reçus, Calls Answered = appels décrochés (indicateur prioritaire)."
+    },
+    {
+      "sujet": "Anciens exports 3CX agrégés",
+      "ecart": "L'ancien agrégat janv-mai (48 289 reçus / 10 215 décrochés) différait légèrement des nouveaux mensuels (46 868 / 9 923).",
+      "source_retenue": "Fichiers mensuels (source prioritaire) ; l'ancien agrégat n'est plus utilisé."
+    },
+    {
+      "sujet": "Signalements Trusted Flagger Q1",
+      "ecart": "Interne (janv-mars) = 1 846 vs BIK déclaré Q1 = 1 858.",
+      "source_retenue": "Interne pour le pilotage ; BIK séparé."
+    }
+  ],
+  "ruptures_methodologiques": [
+    "Migration CRM au 01/02/2026 : nouvel outil, codage multi-catégories (BIK), démarrage de l'export tchat actuel. Affecte la comparabilité avant/après février 2026."
+  ],
+  "comparaisons_temporelles": {
+    "disponibles": [
+      "Janvier 2024 vs 2025 vs 2026 (sollicitations, contacts traités, taux de réponse)"
+    ],
+    "non_disponibles": [
+      "Cumul janv-mai 2026 vs années précédentes (2026 non consolidé au-delà de janvier)",
+      "Signalements et sorties d'anonymat en historique annuel (fichiers 2026 uniquement)"
+    ],
+    "note": "Comparaison historique partielle, à interpréter avec prudence."
+  },
+  "confidentialite": "Les fichiers sources contiennent des données personnelles (noms, emails, téléphones, références de dossiers, noms de mineurs, URLs). Aucune n'a été reportée : seuls des comptages agrégés et anonymes figurent dans les JSON.",
+  "perimetre_partiel_juin": "Données arrêtées au 12/06/2026 : juin 2026 est partiel et signalé comme tel (signalements et sorties d'anonymat).",
+  "telephone_mensuel": "Mise à jour : exports 3CX mensuels intégrés. Appels reçus/décrochés/abandonnés, taux de réponse et durées disponibles par mois (janv-mai 2026)."
+}

@@ -1,0 +1,241 @@
+{
+  "_meta": {
+    "titre": "Signalements Trusted Flagger — 2026",
+    "source": "Signalements RS - 2026.xlsx",
+    "regle": "Tous les signalements du fichier sont comptés comme activité Trusted Flagger.",
+    "date_reference": "Date du signalement 3018"
+  },
+  "total_2026": 4153,
+  "cumul_janvier_mai_2026": 3803,
+  "par_mois_2026": [
+    {
+      "mois": "2026-01",
+      "signalements": 625,
+      "statut": "consolidé"
+    },
+    {
+      "mois": "2026-02",
+      "signalements": 606,
+      "statut": "consolidé"
+    },
+    {
+      "mois": "2026-03",
+      "signalements": 615,
+      "statut": "consolidé"
+    },
+    {
+      "mois": "2026-04",
+      "signalements": 885,
+      "statut": "consolidé"
+    },
+    {
+      "mois": "2026-05",
+      "signalements": 1072,
+      "statut": "consolidé"
+    },
+    {
+      "mois": "2026-06",
+      "signalements": 350,
+      "statut": "partiel"
+    }
+  ],
+  "par_trimestre_2026": {
+    "Q1_janv_mars": 1846,
+    "Q2_avril_mai_partiel": 1957,
+    "juin_partiel": 350
+  },
+  "par_plateforme": [
+    {
+      "plateforme": "TikTok",
+      "signalements": 1559
+    },
+    {
+      "plateforme": "Snapchat",
+      "signalements": 973
+    },
+    {
+      "plateforme": "Instagram",
+      "signalements": 555
+    },
+    {
+      "plateforme": "Telegram",
+      "signalements": 303
+    },
+    {
+      "plateforme": "Discord",
+      "signalements": 271
+    },
+    {
+      "plateforme": "WhatsApp",
+      "signalements": 196
+    },
+    {
+      "plateforme": "Blogspot",
+      "signalements": 73
+    },
+    {
+      "plateforme": "Facebook",
+      "signalements": 48
+    },
+    {
+      "plateforme": "Signal",
+      "signalements": 40
+    },
+    {
+      "plateforme": "X",
+      "signalements": 37
+    },
+    {
+      "plateforme": "YouTube",
+      "signalements": 33
+    },
+    {
+      "plateforme": "Autre plateforme",
+      "signalements": 17
+    },
+    {
+      "plateforme": "NGL",
+      "signalements": 6
+    },
+    {
+      "plateforme": "PornVideoGif",
+      "signalements": 6
+    },
+    {
+      "plateforme": "Roblox",
+      "signalements": 5
+    },
+    {
+      "plateforme": "Leakimedia",
+      "signalements": 5
+    },
+    {
+      "plateforme": "Rencontre Ados",
+      "signalements": 5
+    },
+    {
+      "plateforme": "wattpad",
+      "signalements": 4
+    },
+    {
+      "plateforme": "Pinterest",
+      "signalements": 4
+    },
+    {
+      "plateforme": "Kick",
+      "signalements": 4
+    }
+  ],
+  "par_type_contenu": [
+    {
+      "type": "Compte public",
+      "signalements": 1596
+    },
+    {
+      "type": "Compte privé",
+      "signalements": 977
+    },
+    {
+      "type": "Message privé",
+      "signalements": 794
+    },
+    {
+      "type": "Post public",
+      "signalements": 296
+    },
+    {
+      "type": "Groupe",
+      "signalements": 276
+    },
+    {
+      "type": "Story",
+      "signalements": 89
+    },
+    {
+      "type": "Vidéo",
+      "signalements": 69
+    },
+    {
+      "type": "Canal privé",
+      "signalements": 39
+    },
+    {
+      "type": "Post privé",
+      "signalements": 13
+    },
+    {
+      "type": "Commentaire",
+      "signalements": 9
+    }
+  ],
+  "par_decision": [
+    {
+      "decision": "Suppression du compte",
+      "signalements": 1424
+    },
+    {
+      "decision": "Non violation des CGU",
+      "signalements": 701
+    },
+    {
+      "decision": "Suppression du contenu",
+      "signalements": 315
+    },
+    {
+      "decision": "Avertissement",
+      "signalements": 207
+    },
+    {
+      "decision": "URL introuvable",
+      "signalements": 105
+    },
+    {
+      "decision": "Manque d'informations",
+      "signalements": 74
+    },
+    {
+      "decision": "Déja supprimé",
+      "signalements": 44
+    },
+    {
+      "decision": "Messages privés RGPD",
+      "signalements": 29
+    },
+    {
+      "decision": "3018 non habilité",
+      "signalements": 22
+    },
+    {
+      "decision": "Mesures confidentielles (NCMEC)",
+      "signalements": 21
+    },
+    {
+      "decision": "Accusé de réception uniquement",
+      "signalements": 12
+    },
+    {
+      "decision": "Pas de réponse",
+      "signalements": 8
+    },
+    {
+      "decision": "Non violation",
+      "signalements": 8
+    },
+    {
+      "decision": "Impossiblité de contact/signaler",
+      "signalements": 6
+    },
+    {
+      "decision": "suppression du compte",
+      "signalements": 5
+    }
+  ],
+  "indicateurs_issue": {
+    "suppressions_indicatif": 1802,
+    "refus_non_violation_indicatif": 720,
+    "signalements_issue_connue_indicatif": 2765,
+    "taux_retrait_indicatif_pct": 65.2,
+    "note": "Indicatif uniquement : les libellés de décision ne sont pas normalisés (variantes de casse, doublons). À fiabiliser avant diffusion."
+  },
+  "note_methodologique": "Répartitions plateforme/type/décision calculées sur l'ensemble du fichier (inclut 8 lignes datées 2025 et 42 sans date). Libellés conservés tels quels (ex. mesures confidentielles NCMEC). Aucune donnée personnelle extraite."
+}
