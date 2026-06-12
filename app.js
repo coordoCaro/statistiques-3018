@@ -178,7 +178,7 @@ function renderSynthese() {
   h += "</div>";
 
   if (a.volume_activite_traite) {
-    h += '<div class="kpis">' + kpi("Volume d'activité traité (indicatif)", show(a.volume_activite_traite.valeur_indicative_hors_emails),
+    h += '<div class="kpis">' + kpi("Activité traitée tous canaux (janv.–mai)", show(a.volume_activite_traite.cumul_janv_mai_tous_canaux),
       a.volume_activite_traite.note, "accent") + "</div>";
   }
 
@@ -233,7 +233,7 @@ function construireLecture() {
   if (ph && ph.par_mois) b.push(ligne("Taux de réponse téléphone", ph.par_mois.map(d => d.taux_reponse_pct), ph.par_mois.map(d => libelleCourt(d.mois)), " %"));
   if (ch && ch.par_mois) b.push(ligne("Taux de prise tchat", ch.par_mois.map(d => d.taux_prise_pct), ch.par_mois.map(d => libelleCourt(d.mois)), " %"));
   /* éléments partiels / prudence */
-  b.push({ cls: "neutre", txt: "<strong>À interpréter avec prudence :</strong> juin 2026 partiel (arrêté au 12/06) ; tchat de janvier absent ; contacts traités fév.–mai calculés hors emails." });
+  b.push({ cls: "neutre", txt: "<strong>À interpréter avec prudence :</strong> activité traitée fév.–mai tous canaux (appels + tchats + mails, export Salesforce Case), mai partiel (26/05) ; tchat de janvier absent ; juin partiel sur signalements et sorties." });
   return b.filter(Boolean);
 }
 
@@ -260,7 +260,7 @@ function texteSynthese() {
   if (a.tchat) L.push("Tchats traités (" + a.tchat.periode + ") : " + show(a.tchat.tchats_traites));
   if (a.signalements_trusted_flagger) L.push("Signalements Trusted Flagger (" + a.signalements_trusted_flagger.periode + ") : " + show(a.signalements_trusted_flagger.total));
   if (a.sorties_anonymat) L.push("Sorties d'anonymat (" + a.sorties_anonymat.periode + ") : " + show(a.sorties_anonymat.total));
-  if (a.volume_activite_traite) L.push("Volume d'activité traité (indicatif, hors emails) : " + show(a.volume_activite_traite.valeur_indicative_hors_emails));
+  if (a.volume_activite_traite) L.push("Activité traitée tous canaux janv.-mai (appels+tchats+mails, mai partiel) : " + show(a.volume_activite_traite.cumul_janv_mai_tous_canaux));
   const c = m && m.comparaison_historique_janvier;
   if (c) {
     L.push("Janvier 2026 (consolidé tous canaux) : sollicitations " + show(c.sollicitations["2026"]) + ", contacts traités " + show(c.contacts_traites["2026"]) + ", taux de réponse global " + showPct(c.taux_reponse_pct["2026"]) + ".");
@@ -305,15 +305,18 @@ function remplirHistorique() {
     const v24 = s["2024"][i], v25 = s["2025"][i], v26 = s["2026"][i];
     const isPct = unite === "pct";
     const st = hd.statut_2026[i];
-    const note26 = (st && st !== "consolidé" && v26 != null) ? ' <span class="mini-badge">calc.</span>' : "";
-    const evo2625 = (st === "consolidé") ? evoBadge(v26, v25, uniteEvo) : (v26 != null ? '<span class="evo neutre">non comparable</span>' : '<span class="nd">n.d.</span>');
+    const comparable = (st === "consolidé" || st === "tous canaux");
+    let badge26 = "";
+    if (st === "tous canaux" && v26 != null) badge26 = ' <span class="mini-badge">SF</span>';
+    else if (st === "partiel" && v26 != null) badge26 = ' <span class="mini-badge part">partiel</span>';
+    const evo2625 = comparable ? evoBadge(v26, v25, uniteEvo) : (v26 != null ? '<span class="evo neutre">non comparable</span>' : '<span class="nd">n.d.</span>');
     h += "<tr><td class=\"cellule-mois\">" + esc(lab) + "</td>"
       + td(v24, isPct) + td(v25, isPct) + "<td>" + evoBadge(v25, v24, uniteEvo) + "</td>"
-      + (v26 == null ? '<td class="nd">n.d.</td>' : "<td>" + (isPct ? showPct(v26) : show(v26)) + note26 + "</td>")
+      + (v26 == null ? '<td class="nd">n.d.</td>' : "<td>" + (isPct ? showPct(v26) : show(v26)) + badge26 + "</td>")
       + "<td>" + evo2625 + "</td></tr>";
   });
   h += "</tbody></table></div>";
-  h += noteBox("<strong>Lecture.</strong> 2024 et 2025 sont consolidés tous canaux sur 12 mois. En 2026, seul janvier est consolidé ; les valeurs <span class=\"mini-badge\">calc.</span> (février-mai) sont des contacts traités calculés hors emails, affichés pour information mais non strictement comparables. « Évol. » = variation vs même mois de l'année précédente" + (isPctUnit() ? ", en points pour un taux." : "."));
+  h += noteBox("<strong>Lecture.</strong> 2024 et 2025 sont consolidés tous canaux sur 12 mois. En 2026 : janvier consolidé, février-avril <span class=\"mini-badge\">SF</span> = contacts traités tous canaux (appels + tchats + mails, export Salesforce Case) comparables aux années précédentes, mai <span class=\"mini-badge part\">partiel</span> non comparable. Les sollicitations février-mai 2026 ne sont pas disponibles (taux global non calculable sur ces mois). « Évol. » = variation vs même mois de l'année précédente" + (isPctUnit() ? ", en points pour un taux." : "."));
   zone.innerHTML = h;
 }
 function isPctUnit() { return HIST_IND === "taux_reponse_global_pct"; }
@@ -337,7 +340,7 @@ function renderMensuel() {
   }
 
   h += '<div class="table-enveloppe"><table><thead><tr>'
-    + "<th>Mois</th><th>Appels reçus</th><th>Décrochés</th><th>Taux rép.</th><th>Tchats reçus</th><th>Tchats traités</th><th>Taux prise</th><th>Volume traité</th><th>Signal. TF</th><th>Sorties anon.</th>"
+    + "<th>Mois</th><th>Appels reçus</th><th>Décrochés</th><th>Taux rép.</th><th>Tchats reçus</th><th>Tchats traités</th><th>Taux prise</th><th>Activité traitée<br>(tous canaux)</th><th>Signal. TF</th><th>Sorties anon.</th>"
     + "</tr></thead><tbody>";
   mois.forEach(d => {
     h += '<tr><td class="cellule-mois">' + esc(d.libelle) + "</td>"
@@ -346,7 +349,28 @@ function renderMensuel() {
       + td(d.volume_activite_traite) + td(d.signalements_trusted_flagger) + td(d.sorties_anonymat) + "</tr>";
   });
   h += "</tbody></table></div>";
-  h += noteBox("Taux de réponse téléphone = appels décrochés / appels reçus (base files 3CX). Volume janvier = consolidé tous canaux ; février-mai = appels décrochés + tchats traités (hors emails).");
+  h += noteBox("Taux de réponse téléphone = appels décrochés / appels reçus (base files 3CX). Activité traitée tous canaux : janvier via le tableau d'activité ; février-mai via l'export Salesforce Case (appels + tchats + mails ; mai partiel au 26/05). Les appels décrochés (3CX, téléphonie) et tchats traités (Conversation Entries) affichés ici sont à un niveau de mesure différent du comptage par dossier utilisé pour le total tous canaux.");
+
+  /* Activité traitée tous canaux (appels + tchats + mails) */
+  const tc = m.activite_traitee_tous_canaux;
+  if (tc) {
+    h += '<div class="bloc"><h3 class="bloc-titre">Activité traitée tous canaux (appels + tchats + mails)</h3>';
+    h += '<p class="periode-tag">' + esc(tc.source) + "</p>";
+    h += '<div class="table-enveloppe"><table><thead><tr><th>Mois</th><th>Appels</th><th>Tchats</th><th>Mails</th><th>Total</th></tr></thead><tbody>';
+    tc.par_mois.forEach(d => {
+      const part = String(d.statut).includes("partiel");
+      h += '<tr><td class="cellule-mois">' + esc(libelleCourt(d.mois)) + (part ? ' <span class="mini-badge part">partiel</span>' : "") + "</td>"
+        + td(d.appels) + td(d.tchats) + td(d.mails) + "<td><strong>" + show(d.total) + "</strong></td></tr>";
+    });
+    if (tc.totaux_fev_mai) {
+      const t = tc.totaux_fev_mai;
+      h += '<tr class="ligne-total"><td>Total fév.\u2013mai' + (t.mai_partiel ? " (mai partiel)" : "") + "</td>" + td(t.appels) + td(t.tchats) + td(t.mails) + "<td>" + show(t.total) + "</td></tr>";
+    }
+    h += "</tbody></table></div>" + noteBox(esc(tc.note));
+    const items = tc.par_mois.map(d => ({ label: libelleCourt(d.mois), v: d.total }));
+    const idxPart = tc.par_mois.findIndex(d => String(d.statut).includes("partiel"));
+    h += '<div class="graph">' + svgBars(items, BLEU, idxPart) + "</div></div>";
+  }
 
   const items = mois.map(d => ({ label: libelleCourt(d.mois), recus: d.appels_recus, decroches: d.appels_decroches }));
   h += '<div class="bloc"><h3 class="bloc-titre">Appels reçus et décrochés par mois</h3><div class="graph">'

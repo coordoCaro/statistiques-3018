@@ -147,8 +147,10 @@ Vérifiez que les chiffres se mettent à jour et que les onglets s'affichent.
 - Tout fonctionne **hors ligne** : aucune librairie externe, aucune police à
   télécharger. Les graphiques sont dessinés par `app.js` (SVG / HTML).
 - Quand une donnée n'existe pas, l'application affiche **« n.d. »** plutôt qu'un
-  chiffre inventé. Les valeurs **calculées** (ex. contacts traités février-mai
-  2026, hors emails) sont affichées et signalées par une étiquette « calc. ».
+  chiffre inventé. L'activité traitée février-mai 2026 est **tous canaux**
+  (appels + tchats + mails) ; les mails (915 sur fév.-mai) ne sont plus comptés
+  comme absents. Les mois issus de l'export Salesforce Case portent l'étiquette
+  « SF » et le mois partiel l'étiquette « partiel ».
 - La synthèse direction propose un bouton **« Copier les chiffres clés »** pour
   réutiliser les indicateurs dans un mail ou une présentation.
 
@@ -160,9 +162,12 @@ Les 10 fichiers JSON sont renseignés. Limites connues, détaillées dans l'ongl
 **Méthodologie** :
 
 - **Historique :** 2024 et 2025 consolidés sur 12 mois ; 2026 consolidé tous
-  canaux pour janvier seulement ; février-mai 2026 = contacts traités calculés
-  (hors emails), signalés comme non strictement comparables.
-- **Tchat :** février-mai 2026 (janvier absent de l'export).
+  canaux pour janvier ; février-avril 2026 = contacts traités tous canaux
+  (appels + tchats + mails, export Salesforce Case), comparables aux années
+  précédentes ; mai 2026 partiel (export arrêté au 26/05), non comparable.
+- **Tchat :** février-mai 2026 (janvier absent de l'export Conversation Entries).
+- **Mails :** disponibles février-mai 2026 (export Salesforce Case) et intégrés
+  à l'activité traitée tous canaux.
 - **Juin 2026 :** partiel (arrêté au 12/06), marqué comme tel.
 - **BIK / Insafe :** données déclaratives Q1 2026, présentées séparément.
 

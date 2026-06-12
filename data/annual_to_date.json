@@ -27,8 +27,17 @@
     "total": 1244
   },
   "volume_activite_traite": {
-    "valeur_indicative_hors_emails": 15806,
-    "note": "Indicatif : appels décrochés janv-mai (9923) + tchats traités fév-mai (5883). Janvier absent côté tchat, emails exclus. Ne pas présenter comme un total consolidé."
+    "definition": "activité traitée tous canaux = appels + tchats + mails",
+    "janvier_tous_canaux": 3056,
+    "fev_mai_tous_canaux_sf_case": 13101,
+    "mai_partiel": true,
+    "cumul_janv_mai_tous_canaux": 16157,
+    "detail_fev_mai": {
+      "appels": 5583,
+      "tchats": 6603,
+      "mails": 915
+    },
+    "note": "Janvier : tableau d'activité mensuelle (tous canaux). Février-mai : export Salesforce Case (niveau dossier), mai partiel (26/05). Sources différentes janvier vs février-mai ; à lire comme un ordre de grandeur consolidé."
   },
   "comparaison_annuelle": {
     "note": "Comparaison cumul janv-mai impossible en 2026 (seul janvier consolidé tous canaux dans le tableau mensuel). Comparaison limitée à janvier."

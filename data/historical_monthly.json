@@ -4,14 +4,16 @@
     "source": "3018 - Tableau d'activité mensuelle.xlsx (onglets 2024, 2025, 2026)",
     "formules": {
       "taux_reponse_global_pct": "contacts traités / sollicitations × 100 (1 décimale)",
-      "evolution_annuelle_pct": "(valeur année N − valeur année N-1) / valeur année N-1 × 100, même mois"
+      "evolution_annuelle_pct": "(valeur année N − valeur année N-1) / valeur année N-1 × 100, même mois",
+      "contacts_traites_2026_fev_mai": "appels + tchats + mails (export Salesforce Case, niveau dossier)"
     },
     "statuts": {
       "consolidé": "valeur du tableau d'activité, tous canaux",
-      "calculé (hors emails)": "reconstitué = appels décrochés + tchats traités (emails non disponibles) — non strictement comparable aux mois consolidés",
+      "tous canaux": "contacts traités tous canaux (appels + tchats + mails), export Salesforce Case — comparable aux mois consolidés",
+      "partiel": "mois incomplet (export SF Case arrêté au 26/05/2026) — non comparable",
       "absent": "donnée non disponible dans les sources"
     },
-    "avertissement": "2024 et 2025 sont consolidés sur 12 mois. En 2026, seul janvier est consolidé tous canaux ; février-mai = contacts traités calculés hors emails (sollicitations non disponibles, donc taux global non calculable) ; juin et au-delà absents."
+    "avertissement": "2024 et 2025 sont consolidés sur 12 mois. En 2026 : janvier consolidé tous canaux (tableau d'activité) ; février-avril = contacts traités tous canaux (appels + tchats + mails, export Salesforce Case), comparables aux années précédentes ; mai partiel (arrêté au 26/05) ; juin et au-delà absents. Les sollicitations reçues tous canaux ne sont pas disponibles pour février-mai (donc taux global non calculable)."
   },
   "mois_labels": [
     "Janv.",
@@ -103,10 +105,10 @@
       ],
       "2026": [
         3056,
-        2633,
-        3784,
-        3539,
-        3778,
+        3377,
+        3651,
+        3189,
+        2884,
         null,
         null,
         null,
@@ -163,10 +165,10 @@
   },
   "statut_2026": [
     "consolidé",
-    "calculé (hors emails)",
-    "calculé (hors emails)",
-    "calculé (hors emails)",
-    "calculé (hors emails)",
+    "tous canaux",
+    "tous canaux",
+    "tous canaux",
+    "partiel",
     "absent",
     "absent",
     "absent",

@@ -11,7 +11,7 @@
       "Signalements RS - 2026.xlsx",
       "2026 - Sorties d'anonymat.xlsx"
     ],
-    "avertissement": "Téléphone désormais mensuel (janv-mai). Tchat fév-mai (janvier absent). Volume janvier = consolidé tous canaux ; volume fév-mai = appels décrochés + tchats traités hors emails. Voir methodology.json."
+    "avertissement": "Téléphone et tchat mensuels disponibles (janv-mai). Activité traitée tous canaux (appels + tchats + mails) : janvier via le tableau d'activité, février-mai via l'export Salesforce Case (mai partiel au 26/05). Voir methodology.json."
   },
   "mois": [
     {
@@ -25,7 +25,7 @@
       "tchats_traites": null,
       "taux_prise_tchat_pct": null,
       "volume_activite_traite": 3056,
-      "volume_note": "consolidé tous canaux (tableau mensuel) ; tchat de janvier non disponible séparément",
+      "volume_note": "consolidé tous canaux (tableau d'activité)",
       "signalements_trusted_flagger": 625,
       "sorties_anonymat": 219,
       "sollicitations_entrantes": 14770,
@@ -41,12 +41,12 @@
       "tchats_recus": 1648,
       "tchats_traites": 884,
       "taux_prise_tchat_pct": 53.6,
-      "volume_activite_traite": 2633,
-      "volume_note": "appels décrochés + tchats traités, hors emails",
+      "volume_activite_traite": 3377,
+      "volume_note": "tous canaux : appels + tchats + mails (SF Case)",
       "signalements_trusted_flagger": 606,
       "sorties_anonymat": 161,
       "sollicitations_entrantes": null,
-      "observation": "Téléphone et tchat mensuels disponibles. Volume d'activité traité = appels décrochés + tchats traités (hors emails)."
+      "observation": "Activité traitée tous canaux disponible (appels + tchats + mails, export SF Case). Appels décrochés affichés = 3CX (téléphonie) ; tchats traités = export Conversation Entries."
     },
     {
       "mois": "2026-03",
@@ -58,12 +58,12 @@
       "tchats_recus": 3843,
       "tchats_traites": 1732,
       "taux_prise_tchat_pct": 45.1,
-      "volume_activite_traite": 3784,
-      "volume_note": "appels décrochés + tchats traités, hors emails",
+      "volume_activite_traite": 3651,
+      "volume_note": "tous canaux : appels + tchats + mails (SF Case)",
       "signalements_trusted_flagger": 615,
       "sorties_anonymat": 241,
       "sollicitations_entrantes": null,
-      "observation": "Téléphone et tchat mensuels disponibles. Volume d'activité traité = appels décrochés + tchats traités (hors emails)."
+      "observation": "Activité traitée tous canaux disponible (appels + tchats + mails, export SF Case). Appels décrochés affichés = 3CX (téléphonie) ; tchats traités = export Conversation Entries."
     },
     {
       "mois": "2026-04",
@@ -75,12 +75,12 @@
       "tchats_recus": 2878,
       "tchats_traites": 1549,
       "taux_prise_tchat_pct": 53.8,
-      "volume_activite_traite": 3539,
-      "volume_note": "appels décrochés + tchats traités, hors emails",
+      "volume_activite_traite": 3189,
+      "volume_note": "tous canaux : appels + tchats + mails (SF Case)",
       "signalements_trusted_flagger": 885,
       "sorties_anonymat": 321,
       "sollicitations_entrantes": null,
-      "observation": "Téléphone et tchat mensuels disponibles. Volume d'activité traité = appels décrochés + tchats traités (hors emails)."
+      "observation": "Activité traitée tous canaux disponible (appels + tchats + mails, export SF Case). Appels décrochés affichés = 3CX (téléphonie) ; tchats traités = export Conversation Entries."
     },
     {
       "mois": "2026-05",
@@ -92,12 +92,13 @@
       "tchats_recus": 3181,
       "tchats_traites": 1718,
       "taux_prise_tchat_pct": 54.0,
-      "volume_activite_traite": 3778,
-      "volume_note": "appels décrochés + tchats traités, hors emails",
+      "volume_activite_traite": 2884,
+      "volume_note": "tous canaux : appels + tchats + mails (SF Case) — mai partiel (26/05)",
       "signalements_trusted_flagger": 1072,
       "sorties_anonymat": 302,
       "sollicitations_entrantes": null,
-      "observation": "Téléphone et tchat mensuels disponibles. Volume d'activité traité = appels décrochés + tchats traités (hors emails)."
+      "observation": "Téléphone et tchat mensuels disponibles. Volume d'activité traité = appels décrochés + tchats traités (hors emails). Activité traitée tous canaux partielle (export SF Case arrêté au 26/05) ; appels (3CX) et tchats (Conversation Entries) restent sur mai complet.",
+      "mois_partiel_activite_traitee": true
     }
   ],
   "comparaison_historique_janvier": {
@@ -120,6 +121,60 @@
     "evolution_2026_vs_2025": {
       "sollicitations_pct": -26.4,
       "contacts_traites_pct": -20.2
+    }
+  },
+  "activite_traitee_tous_canaux": {
+    "definition": "activité traitée tous canaux = appels + tchats + mails",
+    "source": "Stats_SF_par_ecoutant_fev-mai_2026.xlsx (export Salesforce, objet Case) — niveau dossier",
+    "note": "Mesure au niveau dossier, distincte des appels décrochés 3CX (téléphonie) et des tchats de l'export Conversation Entries. Janvier provient du tableau d'activité mensuelle (tous canaux). Mai partiel (arrêté au 26/05/2026).",
+    "par_mois": [
+      {
+        "mois": "2026-01",
+        "appels": null,
+        "tchats": null,
+        "mails": null,
+        "total": 3056,
+        "statut": "consolidé (tableau d'activité, canaux non détaillés en valeur)"
+      },
+      {
+        "mois": "2026-02",
+        "appels": 2030,
+        "tchats": 1208,
+        "mails": 139,
+        "total": 3377,
+        "statut": "tous canaux (SF Case)"
+      },
+      {
+        "mois": "2026-03",
+        "appels": 1417,
+        "tchats": 1990,
+        "mails": 244,
+        "total": 3651,
+        "statut": "tous canaux (SF Case)"
+      },
+      {
+        "mois": "2026-04",
+        "appels": 1248,
+        "tchats": 1712,
+        "mails": 229,
+        "total": 3189,
+        "statut": "tous canaux (SF Case)"
+      },
+      {
+        "mois": "2026-05",
+        "appels": 888,
+        "tchats": 1693,
+        "mails": 303,
+        "total": 2884,
+        "statut": "partiel (SF Case, 26/05)"
+      }
+    ],
+    "totaux_fev_mai": {
+      "appels": 5583,
+      "tchats": 6603,
+      "mails": 915,
+      "total": 13101,
+      "mai_partiel": true
     }
   }
 }

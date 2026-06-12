@@ -265,3 +265,6 @@ tbody tr:hover { background: #f4f6ff; }
 /* pied : liste fichiers */
 .pied-fichiers code { background: var(--fond-doux); padding: 1px 5px; border-radius: 4px; margin-right: 2px; }
 .pied-fichiers { line-height: 2; }
+
+/* badge "partiel" dans les tableaux */
+.mini-badge.part { color: #8a1c12; background: #fdecea; }
