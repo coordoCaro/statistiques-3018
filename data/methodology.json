@@ -2,7 +2,9 @@
   "_meta": {
     "titre": "Méthodologie et limites — reporting 3018",
     "date_generation": "2026-06-12",
-    "principe": "Aucune extrapolation. Données manquantes = null ou n.d. Aucune donnée personnelle dans les JSON."
+    "principe": "Aucune extrapolation. Données manquantes = null ou n.d. Aucune donnée personnelle dans les JSON.",
+    "date_mise_a_jour_donnees": "2026-06-12",
+    "periode_couverte": "2024 et 2025 (12 mois) ; 2026 janvier-mai (juin partiel sur signalements et sorties)"
   },
   "fichiers_utilises": [
     {
@@ -43,11 +45,15 @@
     }
   ],
   "regles_de_calcul": {
-    "taux_reponse_telephone": "appels décrochés / appels reçus × 100",
+    "taux_reponse_telephone": "appels décrochés / appels reçus × 100 (base files 3CX)",
     "taux_prise_tchat": "tchats traités / tchats reçus × 100",
     "volume_activite_traite": "appels décrochés + tchats traités + emails traités (emails exclus ici, faute de source exploitable)",
     "arrondi": "pourcentages à 1 décimale",
-    "non_calcul": "aucun taux calculé si dénominateur absent, nul ou périmètre incertain"
+    "non_calcul": "aucun taux calculé si dénominateur absent, nul ou périmètre incertain",
+    "taux_reponse_global": "contacts traités / sollicitations × 100",
+    "evolution_annuelle": "(année N − année N-1) / année N-1 × 100, même mois",
+    "cumul_annuel": "somme des mois disponibles uniquement",
+    "contacts_traites_calcules_2026": "appels décrochés + tchats traités (hors emails) pour février-mai 2026"
   },
   "donnees_manquantes": [
     "Emails : aucune source exploitable → exclus du volume d'activité traité.",
@@ -77,7 +83,9 @@
   ],
   "comparaisons_temporelles": {
     "disponibles": [
-      "Janvier 2024 vs 2025 vs 2026 (sollicitations, contacts traités, taux de réponse)"
+      "2024 vs 2025 : mois par mois sur 12 mois (sollicitations, contacts traités, taux de réponse global)",
+      "2026 vs 2025 : janvier uniquement en consolidé tous canaux",
+      "2026 février-mai : contacts traités calculés (hors emails), affichés et signalés comme non strictement comparables"
     ],
     "non_disponibles": [
       "Cumul janv-mai 2026 vs années précédentes (2026 non consolidé au-delà de janvier)",
@@ -87,5 +95,41 @@
   },
   "confidentialite": "Les fichiers sources contiennent des données personnelles (noms, emails, téléphones, références de dossiers, noms de mineurs, URLs). Aucune n'a été reportée : seuls des comptages agrégés et anonymes figurent dans les JSON.",
   "perimetre_partiel_juin": "Données arrêtées au 12/06/2026 : juin 2026 est partiel et signalé comme tel (signalements et sorties d'anonymat).",
-  "telephone_mensuel": "Mise à jour : exports 3CX mensuels intégrés. Appels reçus/décrochés/abandonnés, taux de réponse et durées disponibles par mois (janv-mai 2026)."
+  "telephone_mensuel": "Mise à jour : exports 3CX mensuels intégrés. Appels reçus/décrochés/abandonnés, taux de réponse et durées disponibles par mois (janv-mai 2026).",
+  "controles_coherence": [
+    {
+      "controle": "Signalements TF : total 2026 = somme des mois",
+      "attendu": 4153,
+      "calcule": 4153,
+      "resultat": "cohérent"
+    },
+    {
+      "controle": "Sorties d'anonymat : somme des mois (janv-juin)",
+      "calcule": 1402,
+      "resultat": "cohérent avec le détail par destinataire"
+    },
+    {
+      "controle": "Cumul janv-mai sorties = somme des 4 destinataires",
+      "attendu": 1244,
+      "calcule": 1244,
+      "resultat": "cohérent (Autres = 1)"
+    },
+    {
+      "controle": "Téléphone : total période = somme des mois (recus/decroches/abandonnes)",
+      "resultat": "cohérent (recalculé depuis les fichiers mensuels)"
+    }
+  ],
+  "pourquoi_nd": "« n.d. » apparaît seulement quand la donnée est réellement absente des sources (ex. sollicitations tous canaux fév-mai 2026, tchat janvier, emails), non exploitable, ou non comparable. Les valeurs partielles ou calculées sont affichées et étiquetées, pas masquées.",
+  "fichiers_json": [
+    "activity_monthly.json",
+    "activity_quarterly.json",
+    "annual_to_date.json",
+    "historical_monthly.json",
+    "phone.json",
+    "chat.json",
+    "trusted_flagger.json",
+    "anonymity_outputs.json",
+    "bik.json",
+    "methodology.json"
+  ]
 }

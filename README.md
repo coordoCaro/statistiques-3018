@@ -1,27 +1,29 @@
-# Reporting interne 3018 — webapp statique
+# Reporting interne 3018 — tableau de bord (webapp statique)
 
-Petite application web pour consulter les statistiques d'activité du 3018
-(mensuel, trimestriel, annuel à date). Elle est **statique** : pas de serveur,
-pas de base de données. Elle lit simplement des fichiers `.json` rangés dans le
-dossier `data/` et les affiche dans des tableaux et des graphiques.
+Application web pour consulter les statistiques d'activité du 3018 : synthèse
+direction, comparaison historique mensuelle (2024 / 2025 / 2026), activité
+mensuelle et trimestrielle, téléphone, tchat, signalements Trusted Flagger,
+sorties d'anonymat, données BIK / Insafe et méthodologie.
 
-Aucune donnée personnelle n'est présente dans les fichiers : uniquement des
-comptages agrégés.
+Elle est **statique** : pas de serveur, pas de base de données. Elle lit
+simplement des fichiers `.json` rangés dans `data/`. Aucune donnée personnelle
+n'est présente : uniquement des comptages agrégés.
 
 ---
 
-## 1. Contenu du dossier
+## 1. Contenu et arborescence
 
 ```
 statistiques-3018/
-├── index.html        ← la page (structure)
-├── style.css         ← l'apparence (charte e-Enfance / 3018)
-├── app.js            ← la logique (charge les JSON et construit l'affichage)
+├── index.html        ← la page (structure)        ← NE PAS modifier en principe
+├── style.css         ← l'apparence                 ← NE PAS modifier en principe
+├── app.js            ← la logique d'affichage      ← NE PAS modifier en principe
 ├── README.md         ← ce fichier
-└── data/             ← les données (à actualiser chaque mois)
+└── data/             ← LES DONNÉES (à actualiser)  ← c'est ICI qu'on met à jour
     ├── activity_monthly.json
     ├── activity_quarterly.json
     ├── annual_to_date.json
+    ├── historical_monthly.json
     ├── phone.json
     ├── chat.json
     ├── trusted_flagger.json
@@ -31,83 +33,137 @@ statistiques-3018/
 ```
 
 - **À la racine du dépôt :** `index.html`, `style.css`, `app.js`, `README.md`.
-- **Dans le dossier `data/` :** les 9 fichiers `.json`.
-
-C'est tout. Pour mettre à jour les chiffres, on **remplace les fichiers JSON**
-dans `data/` : la page se met à jour toute seule, sans toucher au code.
+- **Dans `data/` :** les 10 fichiers `.json`.
 
 ---
 
-## 2. Tester en local (sur votre ordinateur)
+## 2. Quel fichier JSON alimente quelle section ?
 
-⚠️ **Important :** il ne suffit pas de double-cliquer sur `index.html`. Ouvert
-ainsi (adresse `file://...`), le navigateur **bloque** la lecture des fichiers
-JSON pour des raisons de sécurité. Il faut lancer un petit serveur local.
-
-### Option simple : avec Python (déjà installé sur Mac et Linux)
-
-1. Ouvrez un terminal **dans le dossier du projet** (celui qui contient `index.html`).
-2. Tapez :
-
-   ```bash
-   python3 -m http.server 8000
-   ```
-
-3. Dans votre navigateur, allez à l'adresse : `http://localhost:8000`
-4. Pour arrêter le serveur : `Ctrl + C` dans le terminal.
-
-### Option : avec VS Code
-
-Installez l'extension **Live Server**, puis clic droit sur `index.html` →
-« Open with Live Server ».
+| Section de l'application      | Fichier(s) JSON utilisé(s)                          |
+|-------------------------------|-----------------------------------------------------|
+| Synthèse direction            | `annual_to_date.json`, `activity_monthly.json`, et les compteurs de `phone/chat/trusted_flagger/anonymity_outputs` |
+| Comparaison historique        | `historical_monthly.json`                           |
+| Activité mensuelle            | `activity_monthly.json`                             |
+| Activité trimestrielle        | `activity_quarterly.json`                           |
+| Téléphone                     | `phone.json`                                        |
+| Tchat                         | `chat.json`                                         |
+| Signalements Trusted Flagger  | `trusted_flagger.json`                              |
+| Sorties d'anonymat            | `anonymity_outputs.json`                            |
+| Données BIK / Insafe          | `bik.json`                                          |
+| Méthodologie et traçabilité   | `methodology.json`                                  |
 
 ---
 
-## 3. Publier gratuitement sur GitHub Pages
+## 3. Mettre à jour les données — procédure simple
 
-1. Créez un compte sur [github.com](https://github.com) si besoin.
-2. Créez un nouveau dépôt (bouton **New**), par exemple `statistiques-3018`.
-3. Déposez les fichiers : ouvrez le dépôt, bouton **Add file → Upload files**,
-   glissez `index.html`, `style.css`, `app.js`, `README.md` **et le dossier
-   `data/`** (avec ses 9 fichiers), puis **Commit changes**.
-4. Allez dans **Settings → Pages**.
-5. Sous « Build and deployment », choisissez **Source : Deploy from a branch**,
-   branche **main**, dossier **/ (root)**, puis **Save**.
-6. Patientez une minute : GitHub affiche l'adresse publique, du type
+### Étape 1 — Obtenir les nouveaux fichiers JSON
+
+Deux cas :
+
+- **Cas A — il suffit de remplacer les fichiers.** Si on vous fournit
+  directement des fichiers `.json` déjà prêts (même noms que ci-dessus), il
+  suffit de les déposer dans `data/`. Rien d'autre à faire.
+
+- **Cas B — il faut régénérer les JSON.** Si vous avez seulement les fichiers
+  sources du 3018 (les `.xlsx` et `.csv` : tableau d'activité mensuelle, exports
+  3CX, stats tchat, signalements RS, sorties d'anonymat, Helpline Assessment
+  Platform), il faut d'abord **régénérer les JSON** à partir de ces sources
+  (étape réalisée par la personne qui prépare les données). On régénère
+  notamment quand : un nouveau mois arrive, un fichier source est corrigé, ou la
+  structure d'un export change.
+
+> En résumé : **nouveaux `.xlsx`/`.csv` → régénérer les JSON** ; **JSON déjà
+> prêts → simple remplacement dans `data/`**.
+
+### Étape 2 — Remplacer les fichiers dans `data/`
+
+Copiez les nouveaux `.json` dans le dossier `data/`, en écrasant les anciens.
+**Ne touchez pas** à `index.html`, `style.css`, `app.js`.
+
+### Étape 3 — Vérifier en local (recommandé)
+
+⚠️ Ne double-cliquez pas sur `index.html` : ouvert en `file://`, le navigateur
+bloque la lecture des JSON. Lancez un petit serveur local.
+
+Avec Python (déjà présent sur Mac/Linux) — dans le dossier du projet :
+
+```bash
+python3 -m http.server 8000
+```
+
+Puis ouvrez `http://localhost:8000`. Pour arrêter : `Ctrl + C`.
+(Avec VS Code : extension **Live Server**, clic droit sur `index.html`.)
+
+Vérifiez que les chiffres se mettent à jour et que les onglets s'affichent.
+
+### Étape 4 — Republier sur GitHub Pages
+
+1. Ouvrez votre dépôt sur GitHub, entrez dans `data/`.
+2. **Add file → Upload files**, glissez les nouveaux `.json`, **Commit changes**.
+3. GitHub Pages se met à jour tout seul en 1 à 2 minutes.
+
+### Étape 5 — Vérifier que GitHub Pages a bien pris la mise à jour
+
+- Attendez 1–2 minutes après le commit.
+- Rechargez la page publique en **vidant le cache** : `Ctrl + F5` (ou
+  `Cmd + Shift + R` sur Mac).
+- Dans **Settings → Pages**, un bandeau indique la dernière publication réussie.
+- Si besoin, ouvrez l'onglet **Méthodologie** : la « dernière mise à jour des
+  données » doit correspondre à votre nouvelle version.
+
+---
+
+## 4. Première publication sur GitHub Pages
+
+1. Créez un dépôt (bouton **New**), par ex. `statistiques-3018`.
+2. **Add file → Upload files** : déposez les 4 fichiers racine **et** le dossier
+   `data/` complet, puis **Commit**.
+3. **Settings → Pages** → Source : **Deploy from a branch**, branche **main**,
+   dossier **/ (root)** → **Save**.
+4. L'adresse publique apparaît après une minute :
    `https://votre-nom.github.io/statistiques-3018/`.
 
-### Mettre à jour les chiffres plus tard
+---
 
-Allez dans le dossier `data/` sur GitHub, ouvrez le fichier à remplacer
-(ou **Add file → Upload files** pour écraser), validez par **Commit**.
-La page publiée se met à jour automatiquement.
+## 5. En cas de problème
+
+- **Les tableaux affichent « Impossible de charger les données ».**
+  Vous avez probablement ouvert le fichier en `file://`. Utilisez un serveur
+  local (étape 3) ou la version GitHub Pages.
+- **Une section affiche « n.d. » partout.** Le fichier JSON correspondant est
+  peut-être absent, mal nommé ou mal formé. Vérifiez qu'il est bien dans `data/`
+  avec le bon nom, et qu'il s'agit d'un JSON valide (un outil comme
+  jsonlint.com permet de le vérifier).
+- **« n.d. » sur quelques cases seulement.** C'est normal : la donnée est
+  réellement absente ou non comparable pour cette case (ex. tchat de janvier,
+  sollicitations tous canaux de février-mai 2026). Voir l'onglet Méthodologie.
+- **Rien ne change après mise à jour sur GitHub Pages.** Videz le cache du
+  navigateur (`Ctrl + F5`) et patientez 1–2 minutes.
 
 ---
 
-## 4. Bon à savoir
+## 6. Bon à savoir
 
 - Tout fonctionne **hors ligne** : aucune librairie externe, aucune police à
-  télécharger, aucune dépendance.
-- Les graphiques sont dessinés directement par `app.js` (SVG et HTML), pas de
-  bibliothèque tierce.
-- Si un fichier JSON est absent ou mal formé, la section correspondante affiche
-  un message au lieu de planter le reste de la page.
-- Quand une donnée n'existe pas, l'application affiche **« n.d. »**
-  (non disponible) plutôt qu'un chiffre inventé.
+  télécharger. Les graphiques sont dessinés par `app.js` (SVG / HTML).
+- Quand une donnée n'existe pas, l'application affiche **« n.d. »** plutôt qu'un
+  chiffre inventé. Les valeurs **calculées** (ex. contacts traités février-mai
+  2026, hors emails) sont affichées et signalées par une étiquette « calc. ».
+- La synthèse direction propose un bouton **« Copier les chiffres clés »** pour
+  réutiliser les indicateurs dans un mail ou une présentation.
 
 ---
 
-## 5. État des données (juin 2026)
+## 7. État des données (juin 2026)
 
-Les 9 fichiers JSON sont **renseignés** avec de vraies données. Points
-d'attention, détaillés dans l'onglet **Méthodologie** de l'application :
+Les 10 fichiers JSON sont renseignés. Limites connues, détaillées dans l'onglet
+**Méthodologie** :
 
-- **Tchat :** données de **février à mai 2026** (janvier absent de l'export).
-- **Volume d'activité traité :** consolidé tous canaux pour **janvier** ;
-  pour février-mai, calculé comme *appels décrochés + tchats traités*
-  (**hors emails**, aucune source email exploitable).
-- **Juin 2026 :** partiel (données arrêtées au 12/06/2026), signalé comme tel.
-- **Comparaison annuelle :** possible seulement pour **janvier**
-  (seul mois 2026 consolidé tous canaux dans le tableau d'activité).
+- **Historique :** 2024 et 2025 consolidés sur 12 mois ; 2026 consolidé tous
+  canaux pour janvier seulement ; février-mai 2026 = contacts traités calculés
+  (hors emails), signalés comme non strictement comparables.
+- **Tchat :** février-mai 2026 (janvier absent de l'export).
+- **Juin 2026 :** partiel (arrêté au 12/06), marqué comme tel.
+- **BIK / Insafe :** données déclaratives Q1 2026, présentées séparément.
 
 Aucun fichier n'est vide.

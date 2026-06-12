@@ -1,0 +1,178 @@
+{
+  "_meta": {
+    "titre": "Comparaison historique mensuelle — 2024 / 2025 / 2026",
+    "source": "3018 - Tableau d'activité mensuelle.xlsx (onglets 2024, 2025, 2026)",
+    "formules": {
+      "taux_reponse_global_pct": "contacts traités / sollicitations × 100 (1 décimale)",
+      "evolution_annuelle_pct": "(valeur année N − valeur année N-1) / valeur année N-1 × 100, même mois"
+    },
+    "statuts": {
+      "consolidé": "valeur du tableau d'activité, tous canaux",
+      "calculé (hors emails)": "reconstitué = appels décrochés + tchats traités (emails non disponibles) — non strictement comparable aux mois consolidés",
+      "absent": "donnée non disponible dans les sources"
+    },
+    "avertissement": "2024 et 2025 sont consolidés sur 12 mois. En 2026, seul janvier est consolidé tous canaux ; février-mai = contacts traités calculés hors emails (sollicitations non disponibles, donc taux global non calculable) ; juin et au-delà absents."
+  },
+  "mois_labels": [
+    "Janv.",
+    "Févr.",
+    "Mars",
+    "Avril",
+    "Mai",
+    "Juin",
+    "Juil.",
+    "Août",
+    "Sept.",
+    "Oct.",
+    "Nov.",
+    "Déc."
+  ],
+  "series": {
+    "sollicitations": {
+      "2024": [
+        13319,
+        14199,
+        15263,
+        12442,
+        11574,
+        10683,
+        6304,
+        5333,
+        10078,
+        14579,
+        26838,
+        18343
+      ],
+      "2025": [
+        20073,
+        7472,
+        11896,
+        8812,
+        9389,
+        12427,
+        4891,
+        3643,
+        10177,
+        9390,
+        14602,
+        11743
+      ],
+      "2026": [
+        14770,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    "contacts_traites": {
+      "2024": [
+        4245,
+        3769,
+        4483,
+        4373,
+        3795,
+        3755,
+        3724,
+        3504,
+        3589,
+        3404,
+        5048,
+        3679
+      ],
+      "2025": [
+        3828,
+        3446,
+        5185,
+        4324,
+        4567,
+        3832,
+        3063,
+        2639,
+        3825,
+        4275,
+        5044,
+        3881
+      ],
+      "2026": [
+        3056,
+        2633,
+        3784,
+        3539,
+        3778,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    "taux_reponse_global_pct": {
+      "2024": [
+        31.9,
+        26.5,
+        29.4,
+        35.1,
+        32.8,
+        35.1,
+        59.1,
+        65.7,
+        35.6,
+        23.3,
+        18.8,
+        20.1
+      ],
+      "2025": [
+        19.1,
+        46.1,
+        43.6,
+        49.1,
+        48.6,
+        30.8,
+        62.6,
+        72.4,
+        37.6,
+        45.5,
+        34.5,
+        33.0
+      ],
+      "2026": [
+        20.7,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    }
+  },
+  "statut_2026": [
+    "consolidé",
+    "calculé (hors emails)",
+    "calculé (hors emails)",
+    "calculé (hors emails)",
+    "calculé (hors emails)",
+    "absent",
+    "absent",
+    "absent",
+    "absent",
+    "absent",
+    "absent",
+    "absent"
+  ]
+}

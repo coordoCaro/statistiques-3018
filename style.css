@@ -203,3 +203,65 @@ tbody tr.ligne-total td { font-weight: 700; background: var(--fond-doux); }
   .hbar-row { grid-template-columns: 120px 1fr 52px; gap: 8px; }
   .hbar-label { font-size: 12.5px; }
 }
+
+/* =========================================================
+   Tableau de bord — composants enrichis (v2)
+   ========================================================= */
+
+/* KPI */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-top: 14px; }
+.kpis.hero { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.kpi {
+  background: var(--fond-doux); border: 1px solid var(--bordure);
+  border-radius: var(--rayon); padding: 16px 16px 14px;
+}
+.kpi-label { font-size: 13px; color: var(--gris); font-weight: 600; margin: 0; }
+.kpi-valeur { font-size: 30px; font-weight: 800; color: var(--encre); margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
+.kpis.hero .kpi-valeur { font-size: 34px; }
+.kpi-sub { font-size: 12.5px; color: var(--gris-clair); margin: 0; }
+.kpi-sub-inline { font-size: 12px; color: var(--gris-clair); margin-left: 6px; }
+.kpi.primaire { border-top: 3px solid var(--bleu); }
+.kpi.primaire .kpi-valeur { color: var(--bleu); }
+.kpi.accent { border-left: 4px solid var(--jaune); }
+.kpi.vigilance { border-top: 3px solid var(--rouge); }
+.kpi.vigilance .kpi-valeur { color: var(--rouge); }
+
+/* Lecture direction */
+.lecture {
+  margin-top: 22px; background: #fbfcff; border: 1px solid var(--bordure);
+  border-left: 4px solid var(--bleu); border-radius: 0 var(--rayon) var(--rayon) 0; padding: 14px 18px;
+}
+.lecture-titre { font-size: 15px; font-weight: 700; color: var(--bleu); margin: 0 0 8px; }
+.lecture ul { margin: 0; padding-left: 4px; list-style: none; }
+.lecture li { position: relative; padding-left: 18px; margin-bottom: 7px; font-size: 14px; color: var(--encre); }
+.lecture li::before { content: ""; position: absolute; left: 0; top: 7px; width: 8px; height: 8px; border-radius: 2px; background: var(--gris-clair); }
+.lecture li.pt-hausse::before { background: var(--vert); }
+.lecture li.pt-baisse::before { background: var(--rouge); }
+.lecture li.pt-neutre::before { background: var(--gris-clair); }
+
+/* Sélecteur segmenté (comparaison historique) */
+.selecteur { display: inline-flex; gap: 2px; margin-top: 16px; background: var(--fond-doux); border: 1px solid var(--bordure); border-radius: 8px; padding: 3px; flex-wrap: wrap; }
+.seg { appearance: none; border: none; background: transparent; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--gris); padding: 8px 14px; border-radius: 6px; cursor: pointer; }
+.seg:hover { color: var(--bleu); }
+.seg.actif { background: var(--blanc); color: var(--bleu); box-shadow: var(--ombre); }
+.seg:focus-visible { outline: 2px solid var(--bleu); outline-offset: 1px; }
+
+/* Bouton + retour copie */
+.bouton {
+  appearance: none; border: 1px solid var(--bleu); background: var(--bleu); color: #fff;
+  font: inherit; font-weight: 600; font-size: 14px; padding: 10px 18px; border-radius: 8px; cursor: pointer;
+}
+.bouton:hover { background: var(--bleu-fonce); border-color: var(--bleu-fonce); }
+.bouton:focus-visible { outline: 2px solid var(--jaune); outline-offset: 2px; }
+.copie-ok { margin-left: 12px; color: var(--vert); font-weight: 700; font-size: 14px; }
+
+/* mini-badge "calc." */
+.mini-badge { font-size: 10.5px; font-weight: 700; color: #8a5a00; background: #fff4dd; padding: 1px 6px; border-radius: 10px; vertical-align: middle; }
+
+/* tableaux : alternance discrète */
+tbody tr:nth-child(even) { background: #fcfdff; }
+tbody tr:hover { background: #f4f6ff; }
+
+/* pied : liste fichiers */
+.pied-fichiers code { background: var(--fond-doux); padding: 1px 5px; border-radius: 4px; margin-right: 2px; }
+.pied-fichiers { line-height: 2; }
