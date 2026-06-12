@@ -1,0 +1,205 @@
+/* =========================================================
+   Charte e-Enfance / 3018 — fond blanc, bleu dominant,
+   jaune en accent, rouge et vert ponctuels. Style sobre.
+   ========================================================= */
+
+:root {
+  --bleu: #2337FA;        /* RVB 35 / 55 / 250 — couleur dominante */
+  --bleu-fonce: #1a29b8;  /* survol / contraste */
+  --jaune: #FFB40A;       /* RVB 255 / 180 / 10 — accent */
+  --rouge: #D92D20;       /* point de vigilance ponctuel */
+  --vert: #1E9E5A;        /* évolution positive ponctuelle */
+
+  --encre: #1A1F36;       /* texte principal (gris très foncé, pas noir pur) */
+  --gris: #5A6072;        /* texte secondaire */
+  --gris-clair: #8A90A2;  /* légendes */
+  --bordure: #E4E7EC;     /* filets et séparateurs */
+  --fond-doux: #F7F8FC;   /* fonds légers (en-têtes de tableau, cartes) */
+  --blanc: #FFFFFF;
+
+  --rayon: 8px;
+  --ombre: 0 1px 2px rgba(26, 31, 54, 0.06), 0 1px 8px rgba(26, 31, 54, 0.04);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--blanc);
+  color: var(--encre);
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+code { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: 0.92em; }
+
+/* ---------- En-tête ---------- */
+.entete {
+  background: var(--blanc);
+  border-bottom: 1px solid var(--bordure);
+}
+.entete-contenu {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 22px 20px 18px;
+  border-top: 4px solid var(--bleu); /* filet bleu discret */
+}
+.entete-titre { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.marque {
+  font-size: 30px; font-weight: 800; letter-spacing: 0.5px;
+  color: var(--bleu);
+}
+.marque::after { /* petit point d'accent jaune */
+  content: ""; display: inline-block; width: 9px; height: 9px;
+  background: var(--jaune); border-radius: 50%; margin-left: 4px; vertical-align: middle;
+}
+.sous-marque { font-size: 15px; color: var(--gris); font-weight: 500; }
+.entete-baseline { margin: 8px 0 0; color: var(--gris); font-size: 14px; }
+
+/* ---------- Navigation ---------- */
+.navigation {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--blanc);
+  border-bottom: 1px solid var(--bordure);
+}
+.navigation-contenu {
+  max-width: 1080px; margin: 0 auto; padding: 0 12px;
+  display: flex; gap: 2px; overflow-x: auto;
+}
+.nav-bouton {
+  appearance: none; background: transparent; border: none;
+  padding: 14px 14px 12px; margin: 0;
+  font: inherit; font-size: 14px; font-weight: 600; color: var(--gris);
+  cursor: pointer; white-space: nowrap;
+  border-bottom: 3px solid transparent;
+}
+.nav-bouton:hover { color: var(--bleu); }
+.nav-bouton.actif { color: var(--bleu); border-bottom-color: var(--bleu); }
+.nav-bouton:focus-visible { outline: 2px solid var(--bleu); outline-offset: -2px; border-radius: 4px; }
+
+/* ---------- Statut ---------- */
+.statut {
+  max-width: 1080px; margin: 0 auto; padding: 0 20px;
+}
+.statut:not(:empty) { padding-top: 14px; }
+.statut .message { font-size: 14px; color: var(--gris); }
+.statut .erreur {
+  background: #fdecea; border: 1px solid #f4b6ae; color: #8a1c12;
+  padding: 12px 14px; border-radius: var(--rayon); font-size: 14px;
+}
+
+/* ---------- Contenu / sections ---------- */
+.contenu { max-width: 1080px; margin: 0 auto; padding: 26px 20px 40px; }
+.section { animation: apparait 0.18s ease; }
+.section[hidden] { display: none; }
+.section-titre {
+  font-size: 22px; font-weight: 700; color: var(--encre);
+  margin: 0 0 4px; padding-bottom: 10px;
+  border-bottom: 2px solid var(--bordure);
+}
+@keyframes apparait { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .section { animation: none; } }
+
+.bloc { margin-top: 26px; }
+.bloc-titre {
+  font-size: 16px; font-weight: 700; color: var(--bleu);
+  margin: 0 0 12px;
+}
+.intro { color: var(--gris); font-size: 14.5px; margin: 12px 0 0; max-width: 760px; }
+.periode-tag { color: var(--gris-clair); font-size: 13px; font-weight: 600; margin: 2px 0 0; }
+
+/* ---------- Cartes chiffres clés ---------- */
+.cartes { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-top: 14px; }
+.carte {
+  background: var(--fond-doux); border: 1px solid var(--bordure);
+  border-radius: var(--rayon); padding: 16px 16px 14px;
+}
+.carte-label { font-size: 13px; color: var(--gris); font-weight: 600; margin: 0; }
+.carte-valeur {
+  font-size: 30px; font-weight: 800; color: var(--encre);
+  margin: 6px 0 2px; font-variant-numeric: tabular-nums;
+}
+.carte-valeur.accent { color: var(--bleu); }
+.carte-note { font-size: 12.5px; color: var(--gris-clair); margin: 0; }
+.carte.encart-jaune { border-left: 4px solid var(--jaune); }
+
+/* puces d'évolution */
+.evo { font-size: 13px; font-weight: 700; margin-top: 4px; display: inline-block; }
+.evo.hausse { color: var(--vert); }
+.evo.baisse { color: var(--rouge); }
+.evo.neutre { color: var(--gris); }
+
+/* ---------- Tableaux ---------- */
+.table-enveloppe { overflow-x: auto; margin-top: 8px; border: 1px solid var(--bordure); border-radius: var(--rayon); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+thead th {
+  background: var(--fond-doux); color: var(--encre); text-align: right;
+  font-weight: 700; padding: 11px 12px; border-bottom: 2px solid var(--bordure);
+  white-space: nowrap;
+}
+thead th:first-child, tbody td:first-child { text-align: left; }
+tbody td { padding: 10px 12px; border-bottom: 1px solid var(--bordure); text-align: right; font-variant-numeric: tabular-nums; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: #fbfcff; }
+tbody td.nd { color: var(--gris-clair); }
+tbody tr.ligne-total td { font-weight: 700; background: var(--fond-doux); }
+.cellule-mois { font-weight: 600; }
+
+/* ---------- Listes clé / valeur ---------- */
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 0; margin-top: 8px;
+  border: 1px solid var(--bordure); border-radius: var(--rayon); overflow: hidden; }
+.kv > div { padding: 10px 14px; border-bottom: 1px solid var(--bordure); }
+.kv > div:nth-last-child(-n+2) { border-bottom: none; }
+.kv .k { color: var(--gris); font-size: 14px; }
+.kv .v { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---------- Graphiques (SVG simples) ---------- */
+.graph { margin-top: 14px; }
+.graph svg { max-width: 100%; height: auto; display: block; }
+.legende { display: flex; gap: 16px; flex-wrap: wrap; margin: 8px 0 0; font-size: 13px; color: var(--gris); }
+.legende span { display: inline-flex; align-items: center; gap: 6px; }
+.pastille { width: 11px; height: 11px; border-radius: 2px; display: inline-block; }
+
+/* ---------- Encadrés de note ---------- */
+.note {
+  margin-top: 14px; padding: 12px 14px; font-size: 13.5px; color: var(--gris);
+  background: var(--fond-doux); border-left: 3px solid var(--bleu); border-radius: 0 6px 6px 0;
+}
+.note.vigilance { border-left-color: var(--rouge); }
+.note strong { color: var(--encre); }
+
+.liste-propre { margin: 10px 0 0; padding-left: 18px; }
+.liste-propre li { margin-bottom: 6px; font-size: 14px; color: var(--gris); }
+
+.bloc-texte { font-size: 14.5px; color: var(--encre); margin-top: 6px; }
+.bloc-texte .etiquette { font-weight: 700; color: var(--bleu); display: block; margin-bottom: 2px; font-size: 13px; }
+.bloc-texte p { margin: 0 0 12px; color: var(--gris); }
+
+/* badge statut (partiel / consolidé) */
+.badge { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 20px; }
+.badge.partiel { background: #fff4dd; color: #8a5a00; }
+.badge.consolide { background: #e7f6ee; color: #14663b; }
+
+/* ---------- Pied ---------- */
+.pied { border-top: 1px solid var(--bordure); }
+.pied p { max-width: 1080px; margin: 0 auto; padding: 18px 20px; color: var(--gris-clair); font-size: 13px; }
+
+@media (max-width: 560px) {
+  .marque { font-size: 26px; }
+  .carte-valeur { font-size: 26px; }
+  .contenu { padding: 20px 14px 32px; }
+}
+
+/* ---------- Barres horizontales (répartitions) ---------- */
+.hbars { display: flex; flex-direction: column; gap: 7px; margin-top: 6px; }
+.hbar-row { display: grid; grid-template-columns: 190px 1fr 64px; align-items: center; gap: 12px; }
+.hbar-label { font-size: 13.5px; color: var(--encre); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hbar-track { background: var(--fond-doux); border-radius: 4px; height: 16px; overflow: hidden; }
+.hbar-fill { height: 100%; border-radius: 4px; min-width: 2px; }
+.hbar-val { text-align: right; font-size: 13.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) {
+  .hbar-row { grid-template-columns: 120px 1fr 52px; gap: 8px; }
+  .hbar-label { font-size: 12.5px; }
+}

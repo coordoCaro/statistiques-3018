@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reporting interne 3018 — statistiques d'activité</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- En-tête -->
+  <header class="entete">
+    <div class="entete-contenu">
+      <div class="entete-titre">
+        <span class="marque">3018</span>
+        <span class="sous-marque">Association e-Enfance / 3018 — reporting interne</span>
+      </div>
+      <p class="entete-baseline" id="entete-periode">Suivi mensuel, trimestriel et annuel à date de l'activité traitée.</p>
+    </div>
+  </header>
+
+  <!-- Navigation par onglets -->
+  <nav class="navigation" aria-label="Sections du reporting">
+    <div class="navigation-contenu" id="navigation"><!-- boutons injectés par app.js --></div>
+  </nav>
+
+  <!-- Bandeau de statut chargement / erreur -->
+  <div id="statut" class="statut" role="status" aria-live="polite"></div>
+
+  <main class="contenu">
+    <section id="synthese" class="section" tabindex="-1">
+      <h2 class="section-titre">Synthèse</h2>
+      <div id="synthese-contenu"></div>
+    </section>
+
+    <section id="mensuel" class="section" hidden tabindex="-1">
+      <h2 class="section-titre">Activité mensuelle</h2>
+      <div id="mensuel-contenu"></div>
+    </section>
+
+    <section id="trimestriel" class="section" hidden tabindex="-1">
+      <h2 class="section-titre">Activité trimestrielle</h2>
+      <div id="trimestriel-contenu"></div>
+    </section>
+
+    <section id="telephone" class="section" hidden tabindex="-1">
+      <h2 class="section-titre">Téléphone</h2>
+      <div id="telephone-contenu"></div>
+    </section>
+
+    <section id="tchat" class="section" hidden tabindex="-1">
+      <h2 class="section-titre">Tchat</h2>
+      <div id="tchat-contenu"></div>
+    </section>
+
+    <section id="signalements" class="section" hidden tabindex="-1">
+      <h2 class="section-titre">Signalements Trusted Flagger</h2>
+      <div id="signalements-contenu"></div>
+    </section>
+
+    <section id="anonymat" class="section" hidden tabindex="-1">
+      <h2 class="section-titre">Sorties d'anonymat</h2>
+      <div id="anonymat-contenu"></div>
+    </section>
+
+    <section id="bik" class="section" hidden tabindex="-1">
+      <h2 class="section-titre">Données BIK / Insafe</h2>
+      <div id="bik-contenu"></div>
+    </section>
+
+    <section id="methodologie" class="section" hidden tabindex="-1">
+      <h2 class="section-titre">Méthodologie</h2>
+      <div id="methodologie-contenu"></div>
+    </section>
+  </main>
+
+  <footer class="pied">
+    <p>Outil interne de pilotage. Aucune donnée personnelle n'est affichée. Les chiffres proviennent des fichiers déposés dans le dossier <code>/data</code>.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
