@@ -11,7 +11,7 @@
       "Signalements RS - 2026.xlsx",
       "2026 - Sorties d'anonymat.xlsx"
     ],
-    "avertissement": "Téléphone et tchat mensuels disponibles (janv-mai). Activité traitée tous canaux (appels + tchats + mails) : janvier via le tableau d'activité, février-mai via l'export Salesforce Case (mai partiel au 26/05). Voir methodology.json."
+    "avertissement": "Téléphone et tchat mensuels (janv-mai). Activité traitée : janvier via le tableau d'activité ; février-mai reconstruits = appels décrochés (3CX) + tchats traités + mails. Voir methodology.json."
   },
   "mois": [
     {
@@ -41,12 +41,13 @@
       "tchats_recus": 1648,
       "tchats_traites": 884,
       "taux_prise_tchat_pct": 53.6,
-      "volume_activite_traite": 3377,
-      "volume_note": "tous canaux : appels + tchats + mails (SF Case)",
+      "volume_activite_traite": 2772,
+      "volume_note": "reconstruit : appels décrochés + tchats traités + mails",
       "signalements_trusted_flagger": 606,
       "sorties_anonymat": 161,
-      "sollicitations_entrantes": null,
-      "observation": "Activité traitée tous canaux disponible (appels + tchats + mails, export SF Case). Appels décrochés affichés = 3CX (téléphonie) ; tchats traités = export Conversation Entries."
+      "sollicitations_entrantes": 11315,
+      "observation": "Activité traitée reconstruite = appels décrochés (3CX) + tchats traités (export tchat) + mails (export SF Case).",
+      "sollicitations_note": "sollicitations reçues reconstruites = appels reçus (3CX) + tchats reçus + mails (base téléphone 3CX, à comparer avec prudence)"
     },
     {
       "mois": "2026-03",
@@ -58,12 +59,13 @@
       "tchats_recus": 3843,
       "tchats_traites": 1732,
       "taux_prise_tchat_pct": 45.1,
-      "volume_activite_traite": 3651,
-      "volume_note": "tous canaux : appels + tchats + mails (SF Case)",
+      "volume_activite_traite": 4028,
+      "volume_note": "reconstruit : appels décrochés + tchats traités + mails",
       "signalements_trusted_flagger": 615,
       "sorties_anonymat": 241,
-      "sollicitations_entrantes": null,
-      "observation": "Activité traitée tous canaux disponible (appels + tchats + mails, export SF Case). Appels décrochés affichés = 3CX (téléphonie) ; tchats traités = export Conversation Entries."
+      "sollicitations_entrantes": 15601,
+      "observation": "Activité traitée reconstruite = appels décrochés (3CX) + tchats traités (export tchat) + mails (export SF Case).",
+      "sollicitations_note": "sollicitations reçues reconstruites = appels reçus (3CX) + tchats reçus + mails (base téléphone 3CX, à comparer avec prudence)"
     },
     {
       "mois": "2026-04",
@@ -75,12 +77,13 @@
       "tchats_recus": 2878,
       "tchats_traites": 1549,
       "taux_prise_tchat_pct": 53.8,
-      "volume_activite_traite": 3189,
-      "volume_note": "tous canaux : appels + tchats + mails (SF Case)",
+      "volume_activite_traite": 3768,
+      "volume_note": "reconstruit : appels décrochés + tchats traités + mails",
       "signalements_trusted_flagger": 885,
       "sorties_anonymat": 321,
-      "sollicitations_entrantes": null,
-      "observation": "Activité traitée tous canaux disponible (appels + tchats + mails, export SF Case). Appels décrochés affichés = 3CX (téléphonie) ; tchats traités = export Conversation Entries."
+      "sollicitations_entrantes": 10366,
+      "observation": "Activité traitée reconstruite = appels décrochés (3CX) + tchats traités (export tchat) + mails (export SF Case).",
+      "sollicitations_note": "sollicitations reçues reconstruites = appels reçus (3CX) + tchats reçus + mails (base téléphone 3CX, à comparer avec prudence)"
     },
     {
       "mois": "2026-05",
@@ -92,13 +95,13 @@
       "tchats_recus": 3181,
       "tchats_traites": 1718,
       "taux_prise_tchat_pct": 54.0,
-      "volume_activite_traite": 2884,
-      "volume_note": "tous canaux : appels + tchats + mails (SF Case) — mai partiel (26/05)",
+      "volume_activite_traite": 4081,
+      "volume_note": "reconstruit : appels décrochés + tchats traités + mails (mai : mails partiels au 26/05)",
       "signalements_trusted_flagger": 1072,
       "sorties_anonymat": 302,
-      "sollicitations_entrantes": null,
-      "observation": "Téléphone et tchat mensuels disponibles. Volume d'activité traité = appels décrochés + tchats traités (hors emails). Activité traitée tous canaux partielle (export SF Case arrêté au 26/05) ; appels (3CX) et tchats (Conversation Entries) restent sur mai complet.",
-      "mois_partiel_activite_traitee": true
+      "sollicitations_entrantes": 11618,
+      "observation": "Appels (3CX) et tchats (export tchat) couvrent mai complet ; seuls les mails (export SF Case) sont partiels (26/05). Activité traitée = appels décrochés + tchats traités + mails.",
+      "sollicitations_note": "sollicitations reçues reconstruites = appels reçus (3CX) + tchats reçus + mails (base téléphone 3CX, à comparer avec prudence)"
     }
   ],
   "comparaison_historique_janvier": {
@@ -124,57 +127,61 @@
     }
   },
   "activite_traitee_tous_canaux": {
-    "definition": "activité traitée tous canaux = appels + tchats + mails",
-    "source": "Stats_SF_par_ecoutant_fev-mai_2026.xlsx (export Salesforce, objet Case) — niveau dossier",
-    "note": "Mesure au niveau dossier, distincte des appels décrochés 3CX (téléphonie) et des tchats de l'export Conversation Entries. Janvier provient du tableau d'activité mensuelle (tous canaux). Mai partiel (arrêté au 26/05/2026).",
+    "definition": "activité traitée = appels décrochés + tchats traités + mails",
+    "sources": {
+      "appels_decroches": "exports 3CX mensuels (Calls Answered)",
+      "tchats_traites": "Stats_Tchats_fev-mai_2026 (tchats traités)",
+      "mails": "Stats_SF_par_ecoutant (export Salesforce Case, Email + ContactForm)"
+    },
+    "note": "Janvier provient du tableau d'activité mensuelle (tous canaux). Février-mai reconstruits par canal. Mai : appels et tchats complets, mails partiels (26/05). Conforme à la définition : appels décrochés + tchats traités + mails.",
     "par_mois": [
       {
         "mois": "2026-01",
-        "appels": null,
-        "tchats": null,
+        "appels_decroches": null,
+        "tchats_traites": null,
         "mails": null,
         "total": 3056,
-        "statut": "consolidé (tableau d'activité, canaux non détaillés en valeur)"
+        "statut": "consolidé (tableau d'activité)"
       },
       {
         "mois": "2026-02",
-        "appels": 2030,
-        "tchats": 1208,
+        "appels_decroches": 1749,
+        "tchats_traites": 884,
         "mails": 139,
-        "total": 3377,
-        "statut": "tous canaux (SF Case)"
+        "total": 2772,
+        "statut": "reconstruit"
       },
       {
         "mois": "2026-03",
-        "appels": 1417,
-        "tchats": 1990,
+        "appels_decroches": 2052,
+        "tchats_traites": 1732,
         "mails": 244,
-        "total": 3651,
-        "statut": "tous canaux (SF Case)"
+        "total": 4028,
+        "statut": "reconstruit"
       },
       {
         "mois": "2026-04",
-        "appels": 1248,
-        "tchats": 1712,
+        "appels_decroches": 1990,
+        "tchats_traites": 1549,
         "mails": 229,
-        "total": 3189,
-        "statut": "tous canaux (SF Case)"
+        "total": 3768,
+        "statut": "reconstruit"
       },
       {
         "mois": "2026-05",
-        "appels": 888,
-        "tchats": 1693,
+        "appels_decroches": 2060,
+        "tchats_traites": 1718,
         "mails": 303,
-        "total": 2884,
-        "statut": "partiel (SF Case, 26/05)"
+        "total": 4081,
+        "statut": "reconstruit (mails partiels 26/05)"
       }
     ],
     "totaux_fev_mai": {
-      "appels": 5583,
-      "tchats": 6603,
+      "appels_decroches": 7851,
+      "tchats_traites": 5883,
       "mails": 915,
-      "total": 13101,
-      "mai_partiel": true
+      "total": 14649,
+      "mails_mai_partiels": true
     }
   }
 }

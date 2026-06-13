@@ -22,7 +22,10 @@
       "tchat_note": "janvier absent : tchat Q1 = février + mars uniquement",
       "signalements_trusted_flagger": 1846,
       "sorties_anonymat": 621,
-      "observation": "Téléphone consolidé sur le trimestre. Tchat partiel (sans janvier), donc volume d'activité traité non consolidé au trimestre."
+      "volume_activite_traite": 9856,
+      "volume_note": "janvier (tableau) + février-mars reconstruits (appels décrochés + tchats traités + mails)",
+      "sollicitations_recues": 41686,
+      "sollicitations_note": "janvier (tableau) + février-mars reconstruites (appels reçus 3CX + tchats reçus + mails)"
     },
     {
       "trimestre": "Q2 2026",
@@ -37,7 +40,10 @@
       "signalements_juin_partiel": 350,
       "sorties_anonymat_avril_mai": 623,
       "sorties_juin_partiel": 158,
-      "observation": "Trimestre incomplet : juin arrêté au 12/06/2026. Chiffres avril-mai uniquement."
+      "observation": "Trimestre incomplet : juin arrêté au 12/06/2026. Chiffres avril-mai uniquement.",
+      "volume_activite_traite_avril_mai": 7849,
+      "volume_note": "avril-mai reconstruits ; mai : mails partiels (26/05) ; juin non inclus (partiel)",
+      "sollicitations_recues_avril_mai": 21984
     }
   ]
 }

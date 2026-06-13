@@ -11,7 +11,9 @@
       "temps_total": "Talk Time Total",
       "duree_moyenne": "Talk Time Mean"
     },
-    "indicateur_prioritaire": "appels décrochés"
+    "indicateur_prioritaire": "appels décrochés",
+    "usage_activite_traitee": "Les appels décrochés mensuels alimentent l'activité traitée tous canaux (avec tchats traités et mails).",
+    "lexique": "Appels reçus = total des appels (toutes files retenues) = composante téléphone des sollicitations reçues. Appels décrochés = appels pris = composante téléphone des contacts traités. Appels abandonnés = appels non répondus."
   },
   "synthese_periode": {
     "appels_recus": 46868,

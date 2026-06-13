@@ -27,19 +27,31 @@
     "total": 1244
   },
   "volume_activite_traite": {
-    "definition": "activité traitée tous canaux = appels + tchats + mails",
+    "definition": "activité traitée = appels décrochés + tchats traités + mails",
     "janvier_tous_canaux": 3056,
-    "fev_mai_tous_canaux_sf_case": 13101,
-    "mai_partiel": true,
-    "cumul_janv_mai_tous_canaux": 16157,
+    "fev_mai_reconstruit": 14649,
+    "cumul_janv_mai": 17705,
     "detail_fev_mai": {
-      "appels": 5583,
-      "tchats": 6603,
+      "appels_decroches": 7851,
+      "tchats_traites": 5883,
       "mails": 915
     },
-    "note": "Janvier : tableau d'activité mensuelle (tous canaux). Février-mai : export Salesforce Case (niveau dossier), mai partiel (26/05). Sources différentes janvier vs février-mai ; à lire comme un ordre de grandeur consolidé."
+    "mai_mails_partiels": true,
+    "note": "Janvier : tableau d'activité mensuelle (tous canaux). Février-mai : reconstruit par canal (appels décrochés 3CX + tchats traités + mails). Mai : appels et tchats complets, mails partiels (26/05). Sources différentes janvier vs février-mai."
   },
   "comparaison_annuelle": {
     "note": "Comparaison cumul janv-mai impossible en 2026 (seul janvier consolidé tous canaux dans le tableau mensuel). Comparaison limitée à janvier."
+  },
+  "sollicitations_recues": {
+    "definition": "sollicitations reçues = appels reçus (total 3CX) + tchats reçus + mails",
+    "janvier": 14770,
+    "fev_mai": 48900,
+    "cumul_janv_mai": 63670,
+    "detail_fev_mai": {
+      "appels_recus_3cx": 36435,
+      "tchats_recus": 11550,
+      "mails": 915
+    },
+    "note": "Janvier : tableau d'activité (sollicitations). Février-mai : reconstruit. Volet téléphone = total d'appels 3CX (peut recompter des appels via débordement) : à distinguer des contacts traités et à comparer avec prudence aux années précédentes."
   }
 }

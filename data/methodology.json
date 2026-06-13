@@ -59,28 +59,31 @@
     "taux_reponse_global": "contacts traités / sollicitations × 100",
     "evolution_annuelle": "(année N − année N-1) / année N-1 × 100, même mois",
     "cumul_annuel": "somme des mois disponibles uniquement",
-    "contacts_traites_calcules_2026": "remplacé : février-mai 2026 = activité traitée tous canaux (appels + tchats + mails, SF Case), mails désormais disponibles",
-    "activite_traitee_tous_canaux": "appels + tchats + mails (export Salesforce Case), pour février-mai 2026 ; janvier via le tableau d'activité mensuelle"
+    "activite_traitee_tous_canaux": "appels décrochés (3CX) + tchats traités (export tchat) + mails (export SF Case) ; pour février-mai 2026. Janvier 2026 via le tableau d'activité mensuelle.",
+    "sollicitations_recues": "appels reçus (total 3CX) + tchats reçus + mails reçus (+ autres canaux si disponibles)",
+    "distinction_recues_traitees": "sollicitations reçues = activité entrante ; contacts traités = activité prise en charge (appels décrochés + tchats traités + mails)",
+    "contacts_traites": "appels décrochés + tchats traités + mails traités"
   },
   "donnees_manquantes": [
-    "Sollicitations reçues tous canaux février-mai 2026 : non disponibles dans une forme comparable (l'export SF Case mesure les prises en charge, pas les sollicitations entrantes) → taux de réponse global non calculable sur ces mois.",
-    "Tchat janvier 2026 : absent de l'export Conversation Entries.",
-    "Mai 2026 : partiel côté activité traitée tous canaux (export SF Case arrêté au 26/05) ; appels (3CX) et tchats (Conversation Entries) couvrent mai complet.",
-    "Cumul sollicitations janv-mai 2026 : impossible (seul janvier consolidé tous canaux côté sollicitations)."
+    "Tchat janvier 2026 : absent de l'export.",
+    "Mai 2026 : mails partiels (export SF Case au 26/05) ; appels et tchats complets.",
+    "Détail CRIP seul et procureur seul avant 2026 : non disponible (rubrique CRIP regroupée dans le tableau).",
+    "Signal-Sports 2026 : non disponible dans les fichiers fournis.",
+    "OFMIN 2024 : absent du tableau."
   ],
   "ecarts_entre_sources": [
     {
-      "sujet": "Mesure du téléphone",
-      "ecart": "3CX (appels décrochés, niveau téléphonie) = 9 923 sur janv-mai ; export SF Case (appels, niveau dossier) = 5 583 sur fév-mai. Concepts différents.",
-      "source_retenue": "3CX pour la section Téléphone ; SF Case pour l'activité traitée tous canaux."
+      "sujet": "Activité traitée : reconstruction vs mesure SF Case",
+      "ecart": "Reconstruction (décrochés 3CX + tchats traités + mails) = 14649 sur fév-mai ; mesure niveau dossier SF Case = 13 101. Bases de comptage différentes.",
+      "source_retenue": "Reconstruction par canal (définition du prompt maître : appels décrochés + tchats traités + emails)."
     },
     {
-      "sujet": "Mesure du tchat",
-      "ecart": "Conversation Entries (tchats répondus) = 5 883 sur fév-mai ; SF Case (tchats) = 6 603. Définitions différentes.",
-      "source_retenue": "Conversation Entries pour la section Tchat ; SF Case pour l'activité traitée tous canaux."
+      "sujet": "Indicateurs de protection 2024-2025 vs 2026",
+      "ecart": "2024-2025 issus du tableau d'activité ; 2026 des fichiers dédiés. Niveaux non strictement continus.",
+      "source_retenue": "Affichage des deux avec note de prudence."
     },
     {
-      "sujet": "Signalements Trusted Flagger Q1",
+      "sujet": "Signalements TF Q1",
       "ecart": "Interne (janv-mars) = 1 846 vs BIK déclaré Q1 = 1 858.",
       "source_retenue": "Interne pour le pilotage ; BIK séparé."
     }
@@ -91,14 +94,14 @@
   ],
   "comparaisons_temporelles": {
     "disponibles": [
-      "2024 vs 2025 : mois par mois sur 12 mois (sollicitations, contacts traités, taux de réponse global)",
-      "Contacts traités tous canaux 2026 vs 2025 : janvier (consolidé) et février-avril (SF Case, tous canaux) comparables ; mai partiel (non comparable)",
-      "Sollicitations 2026 vs 2025 : janvier uniquement (sollicitations fév-mai non disponibles)"
+      "2024 vs 2025 : 12 mois (sollicitations reçues, contacts traités, taux, indicateurs de protection)",
+      "Sollicitations reçues et contacts traités 2026 vs 2025 : janvier (consolidé) et février-mai (reconstruit) — comparables avec prudence (provenance différente)",
+      "Protection 2026 vs 2024-2025 : signalements plateformes, MEN, PHAROS, OFMIN, Signal-Sports (2024-2025), CRIP/IP/SP regroupés"
     ],
     "non_disponibles": [
-      "Sollicitations reçues février-mai 2026 (pas de source comparable)",
-      "Mai 2026 en comparaison annuelle d'activité traitée (mois partiel)",
-      "Historique annuel des signalements et sorties d'anonymat (fichiers 2026 uniquement)"
+      "Détail CRIP / procureur séparés avant 2026 (rubrique CRIP regroupée)",
+      "Signal-Sports 2026 (aucune transmission sport identifiée dans les fichiers fournis)",
+      "Historique pré-2024"
     ],
     "note": "Comparaison historique partielle, à interpréter avec prudence."
   },
@@ -107,15 +110,15 @@
   "telephone_mensuel": "Mise à jour : exports 3CX mensuels intégrés. Appels reçus/décrochés/abandonnés, taux de réponse et durées disponibles par mois (janv-mai 2026).",
   "controles_coherence": [
     {
-      "controle": "Activité traitée SF : somme des canaux = total (fév-mai)",
-      "attendu": 13101,
-      "calcule": 13101,
+      "controle": "Activité traitée fév-mai = somme des canaux (décrochés+tchats+mails)",
+      "attendu": 14649,
+      "calcule": 14649,
       "resultat": "cohérent"
     },
     {
-      "controle": "Activité traitée SF : somme des mois = total",
-      "attendu": 13101,
-      "calcule": 13101,
+      "controle": "Activité traitée fév-mai = somme des mois",
+      "attendu": 14649,
+      "calcule": 14649,
       "resultat": "cohérent"
     },
     {
@@ -131,7 +134,7 @@
       "resultat": "cohérent"
     }
   ],
-  "pourquoi_nd": "« n.d. » apparaît seulement quand la donnée est réellement absente ou non comparable : sollicitations tous canaux fév-mai 2026, tchat janvier, ou mois partiel. Les mails sont désormais disponibles (915 sur fév-mai) et inclus dans l'activité traitée ; ils ne sont plus comptés comme absents.",
+  "pourquoi_nd": "« n.d. » seulement quand aucune source ne permet de reconstruire l'indicateur. Les sollicitations reçues février-mai 2026 sont reconstruites (appels reçus + tchats reçus + mails) et donc affichées. Restent « n.d. » : tchat janvier, détail CRIP/procureur avant 2026, OFMIN 2024, Signal-Sports 2026.",
   "fichiers_json": [
     "activity_monthly.json",
     "activity_quarterly.json",
@@ -143,5 +146,38 @@
     "anonymity_outputs.json",
     "bik.json",
     "methodology.json"
-  ]
+  ],
+  "lignage_donnees": {
+    "2024_2025": "tableau d'activité mensuelle consolidé (activité globale, activité traitée et indicateurs de protection)",
+    "janvier_2026": "tableau d'activité mensuelle (source consolidée disponible)",
+    "fevrier_mai_2026_activite_traitee": "reconstruit à partir des exports 3CX mensuels (appels décrochés) + fichier tchat (tchats traités) + export SF Case (mails)",
+    "emails": "intégrés (915 sur février-mai, export SF Case) ; si aucune source email exploitable, le volume serait calculé hors emails avec la mention correspondante",
+    "protection_2026": "fichiers dédiés (Signalements RS, Sorties d'anonymat)"
+  },
+  "indicateurs_protection": {
+    "indicateurs_disponibles_historique": "signalements plateformes (Trusted Flagger), MEN / harcèlement scolaire, PHAROS, CRIP, OFMIN (depuis 2025)",
+    "indicateurs_2026_uniquement": "signalements au procureur (absent du tableau d'activité 2024-2025)",
+    "sources": "2024-2025 : tableau d'activité mensuelle (section « Signalements envoyés ») ; 2026 : fichiers dédiés",
+    "limite": "changement de source entre 2024-2025 et 2026 : les niveaux ne sont pas strictement continus ; comparer les tendances avec prudence.",
+    "crip_ip_sp": "La rubrique « CRIP » du tableau d'activité 2024-2025 regroupait informations préoccupantes et signalements au procureur. Indicateur regroupé « CRIP / IP / SP » créé pour la comparaison (2024-2025 = colonne CRIP ; 2026 = cas IPS distincts CRIP et/ou procureur). Détail CRIP / procureur conservé pour 2026."
+  },
+  "lexique": {
+    "sollicitations_recues": "tous les contacts reçus = appels reçus (entrants) + tchats reçus + mails reçus + autres canaux éventuels",
+    "contacts_traites": "contacts effectivement pris en charge = appels décrochés + tchats traités + mails traités",
+    "appels_recus": "appels entrants sur toutes les files retenues (= « total des appels » dans les exports 3CX)",
+    "appels_pris": "appels répondus / décrochés (= « appels répondus » dans les exports 3CX)",
+    "appels_non_repondus": "appels abandonnés",
+    "signalements_plateformes": "tous les signalements du fichier « Signalements RS », considérés comme Trusted Flagger sauf indication contraire explicite",
+    "signal_sports": "ministère des Sports",
+    "crip_2024_2025": "rubrique regroupant informations préoccupantes (IP) et signalements au procureur",
+    "ip_crip_2026": "informations préoccupantes transmises à la CRIP",
+    "article_40_sp_2026": "signalements au procureur (une même situation peut comporter IP et SP)"
+  },
+  "note_provenance": {
+    "2024_2025": "données consolidées du tableau d'activité mensuelle",
+    "2026": "données reconstruites à partir des fichiers sources détaillés (exports 3CX mensuels, fichier tchat, export SF Case pour les mails, fichiers Signalements RS et Sorties d'anonymat)",
+    "sollicitations_vs_traites": "sollicitations reçues = activité entrante ; contacts traités = activité prise en charge. Les deux notions sont distinctes et affichées séparément.",
+    "crip_historique": "les comparaisons CRIP nécessitent de regrouper IP et signalements au procureur (indicateur « CRIP / IP / SP regroupés ») pour conserver un périmètre comparable entre 2024-2025 et 2026.",
+    "prudence": "comparaisons 2026 vs 2024-2025 possibles, à interpréter avec la prudence d'usage liée à la différence de provenance."
+  }
 }

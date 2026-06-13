@@ -161,13 +161,20 @@ Vérifiez que les chiffres se mettent à jour et que les onglets s'affichent.
 Les 10 fichiers JSON sont renseignés. Limites connues, détaillées dans l'onglet
 **Méthodologie** :
 
-- **Historique :** 2024 et 2025 consolidés sur 12 mois ; 2026 consolidé tous
-  canaux pour janvier ; février-avril 2026 = contacts traités tous canaux
-  (appels + tchats + mails, export Salesforce Case), comparables aux années
-  précédentes ; mai 2026 partiel (export arrêté au 26/05), non comparable.
+- **Historique — activité :** 2024 et 2025 consolidés (tableau d'activité) ;
+  2026 reconstruit depuis les fichiers sources. Trois notions distinctes et
+  affichées séparément : **sollicitations reçues** (appels reçus + tchats reçus
+  + mails), **contacts traités** (appels décrochés + tchats traités + mails) et
+  **activité de protection**. Mai : appels et tchats complets, mails partiels
+  (26/05). Comparaisons possibles, à interpréter avec la prudence d'usage liée
+  à la différence de provenance.
+- **Historique — protection :** comparaison 2024 / 2025 / 2026 des signalements
+  plateformes, remontées MEN, PHAROS, CRIP, OFMIN et signalements au procureur.
+  2024-2025 viennent du tableau d'activité, 2026 des fichiers dédiés ; procureur
+  n'existe qu'à partir de 2026, OFMIN à partir de 2025.
 - **Tchat :** février-mai 2026 (janvier absent de l'export Conversation Entries).
-- **Mails :** disponibles février-mai 2026 (export Salesforce Case) et intégrés
-  à l'activité traitée tous canaux.
+- **Mails :** disponibles février-mai 2026 (export Salesforce Case, 915) et
+  intégrés à l'activité traitée — plus comptés comme absents.
 - **Juin 2026 :** partiel (arrêté au 12/06), marqué comme tel.
 - **BIK / Insafe :** données déclaratives Q1 2026, présentées séparément.
 

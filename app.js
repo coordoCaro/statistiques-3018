@@ -178,7 +178,7 @@ function renderSynthese() {
   h += "</div>";
 
   if (a.volume_activite_traite) {
-    h += '<div class="kpis">' + kpi("Activité traitée tous canaux (janv.–mai)", show(a.volume_activite_traite.cumul_janv_mai_tous_canaux),
+    h += '<div class="kpis">' + kpi("Activité traitée tous canaux (janv.–mai)", show(a.volume_activite_traite.cumul_janv_mai),
       a.volume_activite_traite.note, "accent") + "</div>";
   }
 
@@ -233,7 +233,7 @@ function construireLecture() {
   if (ph && ph.par_mois) b.push(ligne("Taux de réponse téléphone", ph.par_mois.map(d => d.taux_reponse_pct), ph.par_mois.map(d => libelleCourt(d.mois)), " %"));
   if (ch && ch.par_mois) b.push(ligne("Taux de prise tchat", ch.par_mois.map(d => d.taux_prise_pct), ch.par_mois.map(d => libelleCourt(d.mois)), " %"));
   /* éléments partiels / prudence */
-  b.push({ cls: "neutre", txt: "<strong>À interpréter avec prudence :</strong> activité traitée fév.–mai tous canaux (appels + tchats + mails, export Salesforce Case), mai partiel (26/05) ; tchat de janvier absent ; juin partiel sur signalements et sorties." });
+  b.push({ cls: "neutre", txt: "<strong>À interpréter avec prudence :</strong> 2026 reconstruit depuis les fichiers sources (sollicitations reçues = entrants ; contacts traités = décrochés/traités) ; mai porte des mails partiels (26/05) ; tchat de janvier absent ; juin partiel sur signalements et sorties." });
   return b.filter(Boolean);
 }
 
@@ -260,7 +260,7 @@ function texteSynthese() {
   if (a.tchat) L.push("Tchats traités (" + a.tchat.periode + ") : " + show(a.tchat.tchats_traites));
   if (a.signalements_trusted_flagger) L.push("Signalements Trusted Flagger (" + a.signalements_trusted_flagger.periode + ") : " + show(a.signalements_trusted_flagger.total));
   if (a.sorties_anonymat) L.push("Sorties d'anonymat (" + a.sorties_anonymat.periode + ") : " + show(a.sorties_anonymat.total));
-  if (a.volume_activite_traite) L.push("Activité traitée tous canaux janv.-mai (appels+tchats+mails, mai partiel) : " + show(a.volume_activite_traite.cumul_janv_mai_tous_canaux));
+  if (a.volume_activite_traite) L.push("Activité traitée janv.-mai (appels décrochés + tchats traités + mails ; mails mai partiels) : " + show(a.volume_activite_traite.cumul_janv_mai));
   const c = m && m.comparaison_historique_janvier;
   if (c) {
     L.push("Janvier 2026 (consolidé tous canaux) : sollicitations " + show(c.sollicitations["2026"]) + ", contacts traités " + show(c.contacts_traites["2026"]) + ", taux de réponse global " + showPct(c.taux_reponse_pct["2026"]) + ".");
@@ -270,56 +270,96 @@ function texteSynthese() {
 
 /* ---------------- COMPARAISON HISTORIQUE ---------------- */
 let HIST_IND = "sollicitations";
-const HIST_LABELS = { sollicitations: "Sollicitations", contacts_traites: "Contacts traités", taux_reponse_global_pct: "Taux de réponse global" };
+let PROT_IND = "signalements_plateformes";
+const HIST_LABELS = { sollicitations: "Sollicitations reçues", contacts_traites: "Contacts traités", taux_reponse_global_pct: "Taux de réponse global" };
 
 function renderHistorique() {
   const hd = DATA.historical;
   if (!hd) return '<p class="intro">Données indisponibles.</p>';
   let h = '<p class="intro">' + esc(hd._meta.avertissement) + "</p>";
+
+  /* Bloc 1 — activité */
+  h += '<div class="bloc"><h3 class="bloc-titre">Activité (globale et traitée)</h3>';
   h += '<div class="selecteur" id="hist-selecteur">';
-  Object.keys(HIST_LABELS).forEach(k => {
-    h += '<button class="seg' + (k === HIST_IND ? " actif" : "") + '" data-ind="' + k + '">' + esc(HIST_LABELS[k]) + "</button>";
-  });
-  h += "</div>";
-  h += '<div id="hist-zone"></div>';
+  Object.keys(HIST_LABELS).forEach(k => h += '<button class="seg' + (k === HIST_IND ? " actif" : "") + '" data-ind="' + k + '">' + esc(HIST_LABELS[k]) + "</button>");
+  h += '</div><div id="hist-zone"></div></div>';
+
+  /* Bloc 2 — protection / signalement */
+  if (hd.protection) {
+    h += '<div class="bloc"><h3 class="bloc-titre">Protection et signalement</h3>';
+    h += '<p class="intro">' + esc(hd.protection.notes.comparabilite) + "</p>";
+    h += '<div class="selecteur" id="prot-selecteur">';
+    Object.keys(hd.protection.indicateurs).forEach(k => h += '<button class="seg' + (k === PROT_IND ? " actif" : "") + '" data-ind="' + k + '">' + esc(hd.protection.indicateurs[k]) + "</button>");
+    h += '</div><div id="prot-zone"></div></div>';
+  }
   return h;
 }
-function remplirHistorique() {
-  const hd = DATA.historical, zone = document.getElementById("hist-zone");
-  if (!zone) return;
-  const labels = hd.mois_labels;
-  const s = hd.series[HIST_IND];
-  const unite = HIST_IND === "taux_reponse_global_pct" ? "pct" : "";
+
+/* Constructeur générique : courbe + tableau + évolutions */
+function blocComparatif(labels, s, statut2026, unite, statutInfo, note) {
   const series = [
-    { name: "2024", color: "#9AA2B8", data: s["2024"] },
-    { name: "2025", color: JAUNE, data: s["2025"] },
-    { name: "2026", color: BLEU, data: s["2026"] },
+    { name: "2024", color: "#9AA2B8", data: s["2024"] || [] },
+    { name: "2025", color: JAUNE, data: s["2025"] || [] },
+    { name: "2026", color: BLEU, data: s["2026"] || [] },
   ];
   let h = '<div class="graph">' + svgLineChart(labels, series, unite) + "</div>"
     + legende([{ label: "2024", color: "#9AA2B8" }, { label: "2025", color: JAUNE }, { label: "2026", color: BLEU }]);
-
-  /* tableau mensuel avec évolutions */
-  const uniteEvo = unite === "pct" ? "pt" : "";
+  const isPct = unite === "pct", uniteEvo = isPct ? "pt" : "";
   h += '<div class="table-enveloppe"><table><thead><tr><th>Mois</th><th>2024</th><th>2025</th><th>Évol. 25/24</th><th>2026</th><th>Évol. 26/25</th></tr></thead><tbody>';
   labels.forEach((lab, i) => {
-    const v24 = s["2024"][i], v25 = s["2025"][i], v26 = s["2026"][i];
-    const isPct = unite === "pct";
-    const st = hd.statut_2026[i];
-    const comparable = (st === "consolidé" || st === "tous canaux");
-    let badge26 = "";
-    if (st === "tous canaux" && v26 != null) badge26 = ' <span class="mini-badge">SF</span>';
-    else if (st === "partiel" && v26 != null) badge26 = ' <span class="mini-badge part">partiel</span>';
-    const evo2625 = comparable ? evoBadge(v26, v25, uniteEvo) : (v26 != null ? '<span class="evo neutre">non comparable</span>' : '<span class="nd">n.d.</span>');
+    const v24 = (s["2024"] || [])[i], v25 = (s["2025"] || [])[i], v26 = (s["2026"] || [])[i];
+    const info = statutInfo(statut2026 ? statut2026[i] : null, v26);
+    const evo2625 = info.comparable ? evoBadge(v26, v25, uniteEvo) : (v26 != null ? '<span class="evo neutre">non comparable</span>' : '<span class="nd">n.d.</span>');
     h += "<tr><td class=\"cellule-mois\">" + esc(lab) + "</td>"
       + td(v24, isPct) + td(v25, isPct) + "<td>" + evoBadge(v25, v24, uniteEvo) + "</td>"
-      + (v26 == null ? '<td class="nd">n.d.</td>' : "<td>" + (isPct ? showPct(v26) : show(v26)) + badge26 + "</td>")
+      + (v26 == null ? '<td class="nd">n.d.</td>' : "<td>" + (isPct ? showPct(v26) : show(v26)) + (info.badge || "") + "</td>")
       + "<td>" + evo2625 + "</td></tr>";
   });
   h += "</tbody></table></div>";
-  h += noteBox("<strong>Lecture.</strong> 2024 et 2025 sont consolidés tous canaux sur 12 mois. En 2026 : janvier consolidé, février-avril <span class=\"mini-badge\">SF</span> = contacts traités tous canaux (appels + tchats + mails, export Salesforce Case) comparables aux années précédentes, mai <span class=\"mini-badge part\">partiel</span> non comparable. Les sollicitations février-mai 2026 ne sont pas disponibles (taux global non calculable sur ces mois). « Évol. » = variation vs même mois de l'année précédente" + (isPctUnit() ? ", en points pour un taux." : "."));
-  zone.innerHTML = h;
+  if (note) h += noteBox(note);
+  return h;
 }
-function isPctUnit() { return HIST_IND === "taux_reponse_global_pct"; }
+
+function statutActivite(st, v26) {
+  if (v26 == null) return { comparable: false, badge: "" };
+  if (st === "consolidé") return { comparable: true, badge: "" };
+  if (st && st.indexOf("mails partiels") >= 0) return { comparable: true, badge: ' <span class="mini-badge">rec.</span> <span class="mini-badge part">mails part.</span>' };
+  if (st === "reconstruit") return { comparable: true, badge: ' <span class="mini-badge">rec.</span>' };
+  return { comparable: false, badge: "" };
+}
+function statutProtection(st, v26) {
+  if (v26 == null) return { comparable: false, badge: "" };
+  if (st === "partiel") return { comparable: false, badge: ' <span class="mini-badge part">partiel</span>' };
+  return { comparable: true, badge: ' <span class="mini-badge">2026</span>' };
+}
+
+function remplirHistorique() {
+  const hd = DATA.historical, zone = document.getElementById("hist-zone");
+  if (!zone) return;
+  const unite = HIST_IND === "taux_reponse_global_pct" ? "pct" : "";
+  function info(st, v26) {
+    if (v26 == null) return { comparable: false, badge: "" };
+    if (st === "consolidé") return { comparable: true, badge: "" };
+    let badge = ' <span class="mini-badge">rec.</span>';
+    if (st && st.indexOf("mails partiels") >= 0) badge += ' <span class="mini-badge part">mails part.</span>';
+    return { comparable: true, badge: badge };
+  }
+  let note;
+  if (HIST_IND === "sollicitations")
+    note = "<strong>Lecture.</strong> Sollicitations <em>reçues</em> = appels reçus (total 3CX) + tchats reçus + mails — activité entrante, distincte des contacts traités. 2024-2025 : tableau consolidé ; 2026 février-mai <span class=\"mini-badge\">rec.</span> reconstruites. Comparaison à interpréter avec la prudence d'usage (provenance différente).";
+  else if (HIST_IND === "contacts_traites")
+    note = "<strong>Lecture.</strong> Contacts <em>traités</em> = appels décrochés + tchats traités + mails. 2024-2025 : tableau consolidé ; 2026 février-mai <span class=\"mini-badge\">rec.</span> reconstruits (mai : mails partiels). « Évol. » = variation vs même mois N-1.";
+  else
+    note = "<strong>Lecture.</strong> Taux de réponse global = contacts traités / sollicitations reçues. 2024-2025 consolidés ; 2026 reconstruit. « Évol. » en points. À interpréter avec la prudence d'usage (provenance différente).";
+  zone.innerHTML = blocComparatif(hd.mois_labels, hd.series[HIST_IND], hd.statut_2026, unite, info, note);
+}
+function remplirProtection() {
+  const hd = DATA.historical, zone = document.getElementById("prot-zone");
+  if (!zone || !hd.protection) return;
+  const p = hd.protection;
+  const note = "<strong>Sources.</strong> " + esc(p.notes.source_2024_2025) + " pour 2024-2025 ; " + esc(p.notes.source_2026) + " pour 2026. " + esc(p.notes.indicateurs_partiels);
+  zone.innerHTML = blocComparatif(p.mois_labels, p.series[PROT_IND], p.statut_2026, "", statutProtection, note);
+}
 
 /* ---------------- ACTIVITÉ MENSUELLE ---------------- */
 function renderMensuel() {
@@ -349,22 +389,21 @@ function renderMensuel() {
       + td(d.volume_activite_traite) + td(d.signalements_trusted_flagger) + td(d.sorties_anonymat) + "</tr>";
   });
   h += "</tbody></table></div>";
-  h += noteBox("Taux de réponse téléphone = appels décrochés / appels reçus (base files 3CX). Activité traitée tous canaux : janvier via le tableau d'activité ; février-mai via l'export Salesforce Case (appels + tchats + mails ; mai partiel au 26/05). Les appels décrochés (3CX, téléphonie) et tchats traités (Conversation Entries) affichés ici sont à un niveau de mesure différent du comptage par dossier utilisé pour le total tous canaux.");
+  h += noteBox("Taux de réponse téléphone = appels décrochés / appels reçus (base files 3CX). Activité traitée : janvier via le tableau d'activité ; février-mai reconstruite = appels décrochés (3CX) + tchats traités (export tchat) + mails (export SF Case). Mai : appels et tchats complets, mails partiels (26/05).");
 
-  /* Activité traitée tous canaux (appels + tchats + mails) */
+  /* Activité traitée tous canaux (appels décrochés + tchats traités + mails) */
   const tc = m.activite_traitee_tous_canaux;
   if (tc) {
-    h += '<div class="bloc"><h3 class="bloc-titre">Activité traitée tous canaux (appels + tchats + mails)</h3>';
-    h += '<p class="periode-tag">' + esc(tc.source) + "</p>";
-    h += '<div class="table-enveloppe"><table><thead><tr><th>Mois</th><th>Appels</th><th>Tchats</th><th>Mails</th><th>Total</th></tr></thead><tbody>';
+    h += '<div class="bloc"><h3 class="bloc-titre">Activité traitée tous canaux (appels décrochés + tchats traités + mails)</h3>';
+    h += '<div class="table-enveloppe"><table><thead><tr><th>Mois</th><th>Appels décrochés</th><th>Tchats traités</th><th>Mails</th><th>Total</th></tr></thead><tbody>';
     tc.par_mois.forEach(d => {
       const part = String(d.statut).includes("partiel");
-      h += '<tr><td class="cellule-mois">' + esc(libelleCourt(d.mois)) + (part ? ' <span class="mini-badge part">partiel</span>' : "") + "</td>"
-        + td(d.appels) + td(d.tchats) + td(d.mails) + "<td><strong>" + show(d.total) + "</strong></td></tr>";
+      h += '<tr><td class="cellule-mois">' + esc(libelleCourt(d.mois)) + (part ? ' <span class="mini-badge part">mails part.</span>' : "") + "</td>"
+        + td(d.appels_decroches) + td(d.tchats_traites) + td(d.mails) + "<td><strong>" + show(d.total) + "</strong></td></tr>";
     });
     if (tc.totaux_fev_mai) {
       const t = tc.totaux_fev_mai;
-      h += '<tr class="ligne-total"><td>Total fév.\u2013mai' + (t.mai_partiel ? " (mai partiel)" : "") + "</td>" + td(t.appels) + td(t.tchats) + td(t.mails) + "<td>" + show(t.total) + "</td></tr>";
+      h += '<tr class="ligne-total"><td>Total fév.\u2013mai' + (t.mails_mai_partiels ? " (mails mai partiels)" : "") + "</td>" + td(t.appels_decroches) + td(t.tchats_traites) + td(t.mails) + "<td>" + show(t.total) + "</td></tr>";
     }
     h += "</tbody></table></div>" + noteBox(esc(tc.note));
     const items = tc.par_mois.map(d => ({ label: libelleCourt(d.mois), v: d.total }));
@@ -626,11 +665,18 @@ function brancherInteractions(id) {
   }
   if (id === "historique") {
     remplirHistorique();
+    remplirProtection();
     const sel = document.getElementById("hist-selecteur");
     if (sel) sel.querySelectorAll(".seg").forEach(btn => btn.addEventListener("click", () => {
       HIST_IND = btn.dataset.ind;
       sel.querySelectorAll(".seg").forEach(b => b.classList.toggle("actif", b === btn));
       remplirHistorique();
+    }));
+    const selP = document.getElementById("prot-selecteur");
+    if (selP) selP.querySelectorAll(".seg").forEach(btn => btn.addEventListener("click", () => {
+      PROT_IND = btn.dataset.ind;
+      selP.querySelectorAll(".seg").forEach(b => b.classList.toggle("actif", b === btn));
+      remplirProtection();
     }));
   }
 }

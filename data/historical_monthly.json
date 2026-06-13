@@ -5,15 +5,16 @@
     "formules": {
       "taux_reponse_global_pct": "contacts traités / sollicitations × 100 (1 décimale)",
       "evolution_annuelle_pct": "(valeur année N − valeur année N-1) / valeur année N-1 × 100, même mois",
-      "contacts_traites_2026_fev_mai": "appels + tchats + mails (export Salesforce Case, niveau dossier)"
+      "contacts_traites_2026_fev_mai": "appels décrochés (3CX) + tchats traités (export tchat) + mails (export SF Case)",
+      "sollicitations_recues_2026_fev_mai": "appels reçus (total 3CX) + tchats reçus + mails — distinct des contacts traités"
     },
     "statuts": {
-      "consolidé": "valeur du tableau d'activité, tous canaux",
-      "tous canaux": "contacts traités tous canaux (appels + tchats + mails), export Salesforce Case — comparable aux mois consolidés",
-      "partiel": "mois incomplet (export SF Case arrêté au 26/05/2026) — non comparable",
+      "consolidé": "valeur du tableau d'activité mensuelle (tous canaux)",
+      "reconstruit": "valeur reconstruite à partir des fichiers sources (3CX, tchat, mails)",
+      "reconstruit (mails partiels)": "mai : appels et tchats complets ; mails partiels (export SF Case au 26/05)",
       "absent": "donnée non disponible dans les sources"
     },
-    "avertissement": "2024 et 2025 sont consolidés sur 12 mois. En 2026 : janvier consolidé tous canaux (tableau d'activité) ; février-avril = contacts traités tous canaux (appels + tchats + mails, export Salesforce Case), comparables aux années précédentes ; mai partiel (arrêté au 26/05) ; juin et au-delà absents. Les sollicitations reçues tous canaux ne sont pas disponibles pour février-mai (donc taux global non calculable)."
+    "avertissement": "2024 et 2025 : données consolidées du tableau d'activité mensuelle (12 mois). 2026 : janvier consolidé ; février-mai reconstruits à partir des fichiers sources détaillés. Sollicitations reçues = appels reçus (total 3CX) + tchats reçus + mails reçus. Contacts traités = appels décrochés + tchats traités + mails traités. Les comparaisons 2026 vs 2024-2025 sont possibles ; à interpréter avec la prudence d'usage liée à la différence de provenance (tableau consolidé vs reconstruction)."
   },
   "mois_labels": [
     "Janv.",
@@ -61,10 +62,10 @@
       ],
       "2026": [
         14770,
-        null,
-        null,
-        null,
-        null,
+        11315,
+        15601,
+        10366,
+        11618,
         null,
         null,
         null,
@@ -105,10 +106,10 @@
       ],
       "2026": [
         3056,
-        3377,
-        3651,
-        3189,
-        2884,
+        2772,
+        4028,
+        3768,
+        4081,
         null,
         null,
         null,
@@ -149,10 +150,10 @@
       ],
       "2026": [
         20.7,
-        null,
-        null,
-        null,
-        null,
+        24.5,
+        25.8,
+        36.3,
+        35.1,
         null,
         null,
         null,
@@ -165,10 +166,10 @@
   },
   "statut_2026": [
     "consolidé",
-    "tous canaux",
-    "tous canaux",
-    "tous canaux",
-    "partiel",
+    "reconstruit",
+    "reconstruit",
+    "reconstruit",
+    "reconstruit (mails partiels)",
     "absent",
     "absent",
     "absent",
@@ -176,5 +177,408 @@
     "absent",
     "absent",
     "absent"
-  ]
+  ],
+  "protection": {
+    "indicateurs": {
+      "signalements_plateformes": "Signalements plateformes (Trusted Flagger)",
+      "men": "Remontées MEN / harcèlement scolaire",
+      "pharos": "PHAROS",
+      "ofmin": "OFMIN",
+      "signal_sports": "Signal-Sports (min. des Sports)",
+      "crip_ip_sp_regroupes": "CRIP / IP / SP (regroupés)",
+      "crip": "dont CRIP (détail 2026)",
+      "procureur": "dont procureur / art. 40 (détail 2026)"
+    },
+    "mois_labels": [
+      "Janv.",
+      "Févr.",
+      "Mars",
+      "Avril",
+      "Mai",
+      "Juin",
+      "Juil.",
+      "Août",
+      "Sept.",
+      "Oct.",
+      "Nov.",
+      "Déc."
+    ],
+    "series": {
+      "signalements_plateformes": {
+        "2024": [
+          427,
+          600,
+          338,
+          319,
+          631,
+          556,
+          526,
+          428,
+          151,
+          131,
+          153,
+          171
+        ],
+        "2025": [
+          253,
+          210,
+          174,
+          231,
+          321,
+          288,
+          404,
+          521,
+          452,
+          429,
+          596,
+          335
+        ],
+        "2026": [
+          625,
+          606,
+          615,
+          885,
+          1072,
+          350,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "men": {
+        "2024": [
+          151,
+          119,
+          147,
+          153,
+          154,
+          189,
+          44,
+          13,
+          135,
+          128,
+          162,
+          148
+        ],
+        "2025": [
+          193,
+          199,
+          271,
+          232,
+          338,
+          233,
+          51,
+          28,
+          206,
+          180,
+          250,
+          155
+        ],
+        "2026": [
+          208,
+          143,
+          199,
+          246,
+          223,
+          127,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "pharos": {
+        "2024": [
+          6,
+          5,
+          2,
+          3,
+          0,
+          0,
+          2,
+          0,
+          0,
+          1,
+          19,
+          6
+        ],
+        "2025": [
+          27,
+          4,
+          0,
+          13,
+          3,
+          3,
+          2,
+          4,
+          4,
+          3,
+          2,
+          4
+        ],
+        "2026": [
+          4,
+          1,
+          9,
+          15,
+          14,
+          3,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "crip": {
+        "2024": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "2025": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "2026": [
+          0,
+          5,
+          8,
+          9,
+          11,
+          8,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "ofmin": {
+        "2024": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "2025": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0
+        ],
+        "2026": [
+          0,
+          5,
+          11,
+          5,
+          7,
+          0,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "procureur": {
+        "2024": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "2025": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "2026": [
+          3,
+          11,
+          25,
+          45,
+          55,
+          18,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "crip_ip_sp_regroupes": {
+        "2024": [
+          3,
+          1,
+          2,
+          0,
+          1,
+          0,
+          0,
+          3,
+          4,
+          1,
+          1,
+          3
+        ],
+        "2025": [
+          1,
+          7,
+          4,
+          2,
+          9,
+          1,
+          9,
+          4,
+          7,
+          3,
+          3,
+          1
+        ],
+        "2026": [
+          3,
+          15,
+          29,
+          54,
+          64,
+          25,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      "signal_sports": {
+        "2024": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "2025": [
+          0,
+          3,
+          1,
+          5,
+          1,
+          2,
+          2,
+          1,
+          1,
+          0,
+          1,
+          0
+        ],
+        "2026": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "statut_2026": [
+      "dédié",
+      "dédié",
+      "dédié",
+      "dédié",
+      "dédié",
+      "partiel",
+      "absent",
+      "absent",
+      "absent",
+      "absent",
+      "absent",
+      "absent"
+    ],
+    "notes": {
+      "source_2024_2025": "tableau d'activité mensuelle, section « Signalements envoyés »",
+      "source_2026": "fichiers dédiés : Signalements RS (plateformes) et Sorties d'anonymat (MEN, PHAROS, CRIP, OFMIN, procureur)",
+      "comparabilite": "2024-2025 et 2026 proviennent de sources différentes : un changement de niveau peut refléter en partie un changement d'outil ou de périmètre, à ne pas lire comme une seule tendance continue.",
+      "indicateurs_partiels": "Procureur absent du tableau (pas d'historique 2024-2025) ; OFMIN absent en 2024. Juin 2026 partiel.",
+      "juin_2026": "partiel (données arrêtées au 12/06)",
+      "crip_ip_sp": "En 2024-2025, la rubrique « CRIP » du tableau d'activité regroupait les informations préoccupantes et les signalements au procureur. L'indicateur « CRIP / IP / SP (regroupés) » assure la comparabilité : 2024-2025 = colonne CRIP du tableau ; 2026 = cas IPS distincts envoyés à CRIP et/ou au procureur (sans double compte). Le détail CRIP seul et procureur seul n'est disponible qu'à partir de 2026.",
+      "signal_sports": "Signal-Sports = ministère des Sports. Présent dans le tableau 2024-2025 (faibles volumes) ; aucune transmission « sports » identifiée dans les fichiers 2026 fournis (2026 = n.d.)."
+    }
+  }
 }

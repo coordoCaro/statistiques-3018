@@ -3,7 +3,9 @@
     "titre": "Tchat — Embedded Messaging (Salesforce)",
     "periode": "01/02/2026 au 31/05/2026",
     "source": "Stats_Tchats_fev-mai_2026.xlsx (export Conversation Entries)",
-    "perimetre": "tchats web et application 3018, périmètre non distingué dans les données sources"
+    "perimetre": "tchats web et application 3018, périmètre non distingué dans les données sources",
+    "usage_activite_traitee": "Les tchats traités mensuels alimentent l'activité traitée tous canaux (avec appels décrochés et mails).",
+    "lexique": "Tchats reçus = composante tchat des sollicitations reçues. Tchats traités = composante tchat des contacts traités."
   },
   "synthese_periode": {
     "tchats_recus": 11550,
