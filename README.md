@@ -27,6 +27,7 @@ statistiques-3018/
     ├── phone.json
     ├── chat.json
     ├── trusted_flagger.json
+    ├── trusted_flagger_2026.json
     ├── anonymity_outputs.json
     ├── bik.json
     └── methodology.json
@@ -47,7 +48,7 @@ statistiques-3018/
 | Activité trimestrielle        | `activity_quarterly.json`                           |
 | Téléphone                     | `phone.json`                                        |
 | Tchat                         | `chat.json`                                         |
-| Signalements Trusted Flagger  | `trusted_flagger.json`                              |
+| Signalements Trusted Flagger  | `trusted_flagger_2026.json` (tableau de bord dynamique) ; `trusted_flagger.json` (synthèse) |
 | Sorties d'anonymat            | `anonymity_outputs.json`                            |
 | Données BIK / Insafe          | `bik.json`                                          |
 | Méthodologie et traçabilité   | `methodology.json`                                  |

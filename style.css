@@ -268,3 +268,9 @@ tbody tr:hover { background: #f4f6ff; }
 
 /* badge "partiel" dans les tableaux */
 .mini-badge.part { color: #8a1c12; background: #fdecea; }
+
+/* ---------- Tableau de bord Trusted Flagger : filtres ---------- */
+.tf-filtres { display: flex; flex-wrap: wrap; gap: 14px; margin: 16px 0 4px; padding: 14px 16px; background: var(--fond-doux); border: 1px solid var(--bordure); border-radius: var(--rayon); }
+.tf-filtres label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; font-weight: 600; color: var(--gris); flex: 1 1 200px; }
+.tf-filtres select { font: inherit; font-size: 14px; font-weight: 500; color: var(--encre); padding: 9px 10px; border: 1px solid var(--bordure); border-radius: 6px; background: var(--blanc); max-width: 100%; }
+.tf-filtres select:focus-visible { outline: 2px solid var(--bleu); outline-offset: 1px; }

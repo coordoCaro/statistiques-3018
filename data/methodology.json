@@ -145,7 +145,8 @@
     "trusted_flagger.json",
     "anonymity_outputs.json",
     "bik.json",
-    "methodology.json"
+    "methodology.json",
+    "trusted_flagger_2026.json"
   ],
   "lignage_donnees": {
     "2024_2025": "tableau d'activité mensuelle consolidé (activité globale, activité traitée et indicateurs de protection)",
@@ -179,5 +180,23 @@
     "sollicitations_vs_traites": "sollicitations reçues = activité entrante ; contacts traités = activité prise en charge. Les deux notions sont distinctes et affichées séparément.",
     "crip_historique": "les comparaisons CRIP nécessitent de regrouper IP et signalements au procureur (indicateur « CRIP / IP / SP regroupés ») pour conserver un périmètre comparable entre 2024-2025 et 2026.",
     "prudence": "comparaisons 2026 vs 2024-2025 possibles, à interpréter avec la prudence d'usage liée à la différence de provenance."
+  },
+  "tableau_de_bord_trusted_flagger": {
+    "perimetre": "strictement 2026 (date du signalement 3018)",
+    "source": "Signalements RS - 2026.xlsx ; données analytiques anonymisées (aucune donnée personnelle) dans trusted_flagger_2026.json",
+    "indicateur_principal": "nombre de signalements envoyés (les relances ne sont jamais additionnées aux signalements)",
+    "relances": "colonnes « Date de relance/appel » et « Relance TikTok » ; un signalement relancé compte une fois (signalements relancés), chaque relance compte dans le total des relances",
+    "categories_reponse": "colonne « Décision de la plateforme », libellés exacts non modifiés ; cellule vide = « Non renseigné » (distinct de « Pas de réponse »)",
+    "thematiques": "colonne « Thématiques », multi-valeurs (parsing CSV, libellés exacts), non exclusives",
+    "types_de_reponse": "action et refus = réponse de la plateforme ; sans_reponse = « Pas de réponse »/« Aucune réponse » ; non_abouti = URL introuvable, manque d'informations, 3018 non habilité, accusé de réception, etc. (non comptés comme réponse) ; mapping catégorie→type exposé dans trusted_flagger_2026.json",
+    "taux": {
+      "taux_non_renseignement": "non renseignés / total signalements envoyés",
+      "taux_reponse": "réponses (action + refus) / signalements renseignés",
+      "taux_refus": "refus / réponses",
+      "taux_relance": "signalements relancés (distincts) / total signalements envoyés"
+    },
+    "delais": "date de réponse (Q) − date d'envoi (K), en jours, uniquement si les deux dates sont valides et le délai ≥ 0 ; le nombre de lignes utilisées est affiché",
+    "division_par_zero": "un taux non calculable est affiché « N/A » (jamais une erreur)",
+    "exclus": "pas d'analyse par juriste, pas de classement ni de performance individuelle, pas de CRM, pas de données antérieures à 2026"
   }
 }

@@ -26,6 +26,7 @@ const FICHIERS = {
   phone:       "data/phone.json",
   chat:        "data/chat.json",
   flagger:     "data/trusted_flagger.json",
+  tf2026:      "data/trusted_flagger_2026.json",
   anonymity:   "data/anonymity_outputs.json",
   bik:         "data/bik.json",
   methodology: "data/methodology.json",
@@ -505,30 +506,165 @@ function renderTchat() {
 }
 
 /* ---------------- SIGNALEMENTS TF ---------------- */
-function renderSignalements() {
-  const f = DATA.flagger;
-  if (!f) return '<p class="intro">Données indisponibles.</p>';
-  const cons = (f.par_mois_2026 || []).filter(d => d.statut === "consolidé");
-  let h = '<div class="kpis hero">'
-    + kpi("Total 2026", show(f.total_2026), "tous mois (juin partiel)", "primaire")
-    + kpi("Cumul janv.–mai", show(f.cumul_janvier_mai_2026), "année à date", "primaire")
-    + (f.par_trimestre_2026 ? kpi("Q1 (janv.–mars)", show(f.par_trimestre_2026.Q1_janv_mars), "consolidé", "") : "")
-    + "</div>";
-  const t = tendance(cons.map(d => d.signalements));
-  if (t) h += lectureBox("Lecture", [{ cls: t.cls, txt: "Activité de signalement " + (t.cls === "hausse" ? "en hausse" : t.cls === "baisse" ? "en baisse" : "stable") + " (" + libelleCourt(cons[t.idxA].mois) + " " + show(t.premier) + " → " + libelleCourt(cons[t.idxB].mois) + " " + show(t.dernier) + ", " + t.txt + ")." }]);
+/* ===== Tableau de bord Trusted Flagger (dynamique, 2026) ===== */
+let TF_F = { periode: "annee", plat: "__all__", theme: "__all__" };
+function escAttr(s) { return esc(s).replace(/"/g, "&quot;"); }
+function pctSafe(num, den) { return den > 0 ? Math.round(num / den * 1000) / 10 : null; }
+function showNA(v, suffixe) { return (v === null || v === undefined) ? "N/A" : nf(v) + (suffixe || ""); }
+function tdNA(v, suffixe) { return (v === null || v === undefined) ? '<td class="nd">N/A</td>' : "<td>" + nf(v) + (suffixe || "") + "</td>"; }
 
-  if (f.par_mois_2026) {
-    const idxPart = f.par_mois_2026.findIndex(d => d.statut !== "consolidé");
-    h += '<div class="bloc"><h3 class="bloc-titre">Évolution mensuelle 2026</h3><div class="graph">'
-      + svgBars(f.par_mois_2026.map(d => ({ label: libelleCourt(d.mois), v: d.signalements })), BLEU, idxPart) + "</div>"
-      + noteBox("Le dernier mois (hachuré) est partiel.") + "</div>";
-  }
-  if (f.par_plateforme) h += '<div class="bloc"><h3 class="bloc-titre">Par plateforme</h3>' + htmlHBars(f.par_plateforme.map(d => ({ label: d.plateforme, v: d.signalements })), BLEU) + "</div>";
-  if (f.par_type_contenu) h += '<div class="bloc"><h3 class="bloc-titre">Par type de contenu</h3>' + htmlHBars(f.par_type_contenu.map(d => ({ label: d.type, v: d.signalements })), BLEU) + "</div>";
-  if (f.par_decision) h += '<div class="bloc"><h3 class="bloc-titre">Par décision de la plateforme</h3>' + htmlHBars(f.par_decision.map(d => ({ label: d.decision, v: d.signalements })), GRIS) + "</div>";
-  if (f.indicateurs_issue && f.indicateurs_issue.note) h += noteBox("<strong>Taux de retrait indicatif : " + showPct(f.indicateurs_issue.taux_retrait_indicatif_pct) + ".</strong> " + esc(f.indicateurs_issue.note), "vigilance");
-  if (f.note_methodologique) h += noteBox(esc(f.note_methodologique));
+function tfPeriodMatch(m, p) {
+  if (p === "annee") return true;
+  if (p.charAt(0) === "Q") return Math.ceil(m / 3) === (+p.charAt(1));
+  if (p.slice(0, 2) === "m:") return m === (+p.slice(2));
+  return true;
+}
+function tfFilter(recs, f, use) {
+  const TF = DATA.tf2026;
+  use = use || {};
+  const pIdx = (use.plat !== false && f.plat !== "__all__") ? TF.plats_index.indexOf(f.plat) : -1;
+  const tIdx = (use.theme !== false && f.theme !== "__all__") ? TF.themes_index.indexOf(f.theme) : -1;
+  return recs.filter(r => {
+    if (use.periode !== false && !tfPeriodMatch(r.m, f.periode)) return false;
+    if (pIdx >= 0 && r.p !== pIdx) return false;
+    if (tIdx >= 0 && r.t.indexOf(tIdx) < 0) return false;
+    return true;
+  });
+}
+function tfDelais(recs) {
+  const v = []; recs.forEach(r => { if (r.d !== undefined && r.d !== null) v.push(r.d); });
+  if (!v.length) return { n: 0, mean: null, median: null, min: null, max: null };
+  v.sort((a, b) => a - b);
+  const mid = Math.floor(v.length / 2);
+  const med = v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
+  return { n: v.length, mean: Math.round(v.reduce((s, x) => s + x, 0) / v.length * 10) / 10, median: med, min: v[0], max: v[v.length - 1] };
+}
+function tfAgg(recs) {
+  let relT = 0, rel = 0, rens = 0, rep = 0, refus = 0, repS = 0, repA = 0;
+  recs.forEach(r => {
+    relT += r.rl || 0; const re = (r.rl || 0) > 0; if (re) rel++;
+    if (r.ty !== "non_renseigne") rens++;
+    const isRep = (r.ty === "action" || r.ty === "refus");
+    if (isRep) { rep++; if (re) repA++; else repS++; }
+    if (r.ty === "refus") refus++;
+  });
+  const env = recs.length, nonRens = env - rens;
+  return { env: env, relT: relT, rel: rel, tauxRel: pctSafe(rel, env), rens: rens, nonRens: nonRens,
+    tauxNonRens: pctSafe(nonRens, env), rep: rep, repS: repS, repA: repA,
+    tauxRep: pctSafe(rep, rens), refus: refus, tauxRefus: pctSafe(refus, rep), del: tfDelais(recs) };
+}
+function tfGroup(recs, byTheme) {
+  const TF = DATA.tf2026, g = {};
+  recs.forEach(r => { if (byTheme) r.t.forEach(ti => { (g[ti] = g[ti] || []).push(r); }); else { (g[r.p] = g[r.p] || []).push(r); } });
+  return Object.keys(g).map(k => ({ label: (byTheme ? TF.themes_index : TF.plats_index)[k], agg: tfAgg(g[k]) }))
+    .sort((a, b) => b.agg.env - a.agg.env);
+}
+function htmlHBarsPct(items, color) {
+  return '<div class="hbars">' + items.map(d => {
+    const w = (d.v == null) ? 0 : Math.min(d.v, 100);
+    return '<div class="hbar-row"><div class="hbar-label" title="' + escAttr(d.label) + '">' + esc(d.label) + '</div>'
+      + '<div class="hbar-track"><div class="hbar-fill" style="width:' + w + '%;background:' + color + '"></div></div>'
+      + '<div class="hbar-val">' + showNA(d.v, " %") + "</div></div>";
+  }).join("") + "</div>";
+}
+
+function renderSignalements() {
+  const TF = DATA.tf2026;
+  if (!TF) return '<p class="intro">Données indisponibles.</p>';
+  /* filtres dynamiques */
+  const moisDispo = []; TF.records.forEach(r => { if (moisDispo.indexOf(r.m) < 0) moisDispo.push(r.m); }); moisDispo.sort((a, b) => a - b);
+  let perOpts = '<option value="annee">Année 2026 complète</option><option value="Q1">T1 (janv.–mars)</option><option value="Q2">T2 (avr.–juin, partiel)</option>';
+  moisDispo.forEach(m => { perOpts += '<option value="m:' + m + '">' + esc(MOIS_COURT[String(m).padStart(2, "0")]) + ' 2026</option>'; });
+  let platOpts = '<option value="__all__">Toutes les plateformes</option>' + TF.plateformes.map(p => '<option value="' + escAttr(p) + '">' + esc(p) + "</option>").join("");
+  let themeOpts = '<option value="__all__">Toutes les thématiques</option>' + TF.thematiques.map(t => '<option value="' + escAttr(t) + '">' + esc(t) + "</option>").join("");
+
+  let h = '<p class="intro">Tableau de bord analytique — périmètre strictement 2026. ' + esc(TF._meta.confidentialite) + "</p>";
+  h += '<div class="tf-filtres">'
+    + '<label>Période<select id="tf-periode">' + perOpts + "</select></label>"
+    + '<label>Plateforme<select id="tf-plat">' + platOpts + "</select></label>"
+    + '<label>Thématique<select id="tf-theme">' + themeOpts + "</select></label>"
+    + "</div>";
+  h += '<div id="tf-zone"></div>';
   return h;
+}
+
+function tfFill() {
+  const TF = DATA.tf2026, zone = document.getElementById("tf-zone");
+  if (!zone) return;
+  const recs = TF.records;
+  const full = tfFilter(recs, TF_F, {});                 /* tous filtres */
+  const noPlat = tfFilter(recs, TF_F, { plat: false });  /* pour répartition/tableau plateforme */
+  const noTheme = tfFilter(recs, TF_F, { theme: false });/* pour répartition/tableau thématique */
+  const noPer = tfFilter(recs, TF_F, { periode: false });/* pour évolution mensuelle */
+  const a = tfAgg(full);
+
+  /* KPI */
+  let h = '<div class="kpis hero">'
+    + kpi("Signalements envoyés", show(a.env), "sur la sélection", "primaire")
+    + kpi("Relances (total)", show(a.relT), "toutes relances", "")
+    + kpi("Signalements relancés", show(a.rel), "≥ 1 relance", "")
+    + kpi("Taux de relance", showNA(a.tauxRel, " %"), "relancés / envoyés", "")
+    + "</div><div class=\"kpis\">"
+    + kpi("Taux de réponse", showNA(a.tauxRep, " %"), "réponses / renseignés", "primaire")
+    + kpi("Taux de refus", showNA(a.tauxRefus, " %"), "refus / réponses", "")
+    + kpi("Taux de non-renseignement", showNA(a.tauxNonRens, " %"), "non renseignés / envoyés", (a.tauxNonRens != null && a.tauxNonRens >= 30) ? "vigilance" : "")
+    + kpi("Délai moyen de réponse", a.del.n ? show(a.del.mean) + " j" : "N/A", a.del.n ? "sur " + show(a.del.n) + " réponses datées" : "aucune date", "")
+    + "</div>";
+  h += noteBox("Réponses obtenues <strong>sans relance</strong> : " + show(a.repS) + " — <strong>après relance</strong> : " + show(a.repA) + ". Délais (jours) — médian " + showNA(a.del.median) + ", min " + showNA(a.del.min) + ", max " + showNA(a.del.max) + " (sur " + show(a.del.n) + " lignes datées).");
+
+  /* Évolution mensuelle (filtres plateforme + thématique, toutes périodes) */
+  const months = [1, 2, 3, 4, 5, 6];
+  const evoSig = months.map(m => ({ label: MOIS_COURT[String(m).padStart(2, "0")], v: noPer.filter(r => r.m === m).length }));
+  const evoRel = months.map(m => ({ label: MOIS_COURT[String(m).padStart(2, "0")], v: noPer.filter(r => r.m === m).reduce((s, r) => s + (r.rl || 0), 0) }));
+  const idxJuin = 5;
+  h += '<div class="bloc"><h3 class="bloc-titre">Évolution mensuelle des signalements</h3><div class="graph">' + svgBars(evoSig, BLEU, idxJuin) + "</div>" + noteBox("Juin (hachuré) est partiel. Filtré par plateforme et thématique.") + "</div>";
+  h += '<div class="bloc"><h3 class="bloc-titre">Évolution mensuelle des relances</h3><div class="graph">' + svgBars(evoRel, JAUNE, idxJuin) + "</div></div>";
+
+  /* Répartitions */
+  const byPlat = tfGroup(noPlat, false), byTheme = tfGroup(noTheme, true), byCat = (function () { const c = {}; full.forEach(r => { c[r.c] = (c[r.c] || 0) + 1; }); return Object.keys(c).map(k => ({ label: TF.cats_index[k], v: c[k] })).sort((x, y) => y.v - x.v); })();
+  h += '<div class="bloc"><h3 class="bloc-titre">Répartition par plateforme</h3>' + htmlHBars(byPlat.slice(0, 12).map(d => ({ label: d.label, v: d.agg.env })), BLEU) + "</div>";
+  h += '<div class="bloc"><h3 class="bloc-titre">Répartition par thématique</h3>' + htmlHBars(byTheme.slice(0, 12).map(d => ({ label: d.label, v: d.agg.env })), BLEU) + noteBox("Thématiques non exclusives : un signalement peut en porter plusieurs (le total dépasse le nombre de signalements).") + "</div>";
+  h += '<div class="bloc"><h3 class="bloc-titre">Répartition des catégories de réponse</h3>' + htmlHBars(byCat.map(d => ({ label: d.label, v: d.v })), GRIS) + "</div>";
+
+  /* Taux par plateforme (top 12 par volume) */
+  const topP = byPlat.slice(0, 12);
+  h += '<div class="bloc"><h3 class="bloc-titre">Taux de réponse par plateforme</h3>' + htmlHBarsPct(topP.map(d => ({ label: d.label, v: d.agg.tauxRep })), VERT) + "</div>";
+  h += '<div class="bloc"><h3 class="bloc-titre">Taux de refus par plateforme</h3>' + htmlHBarsPct(topP.map(d => ({ label: d.label, v: d.agg.tauxRefus })), ROUGE) + "</div>";
+  h += '<div class="bloc"><h3 class="bloc-titre">Taux de non-renseignement par plateforme</h3>' + htmlHBarsPct(topP.map(d => ({ label: d.label, v: d.agg.tauxNonRens })), JAUNE) + "</div>";
+  h += '<div class="bloc"><h3 class="bloc-titre">Délai moyen de réponse par plateforme (jours)</h3>' + htmlHBars(topP.map(d => ({ label: d.label, v: d.agg.del.mean })), BLEU) + "</div>";
+
+  /* Tableau par plateforme */
+  const totEnvP = byPlat.reduce((s, d) => s + d.agg.env, 0);
+  h += '<div class="bloc"><h3 class="bloc-titre">Tableau comparatif par plateforme</h3><div class="table-enveloppe"><table><thead><tr>'
+    + "<th>Plateforme</th><th>Envoyés</th><th>Part</th><th>Relances</th><th>Relancés</th><th>Taux relance</th><th>Renseignés</th><th>Non rens.</th><th>Tx non-rens.</th><th>Tx réponse</th><th>Tx refus</th><th>Délai moy.</th><th>Médian</th><th>Min</th><th>Max</th>"
+    + "</tr></thead><tbody>";
+  byPlat.forEach(d => {
+    const g = d.agg;
+    h += "<tr><td>" + esc(d.label) + "</td>" + td(g.env) + tdNA(pctSafe(g.env, totEnvP), " %") + td(g.relT) + td(g.rel) + tdNA(g.tauxRel, " %")
+      + td(g.rens) + td(g.nonRens) + tdNA(g.tauxNonRens, " %") + tdNA(g.tauxRep, " %") + tdNA(g.tauxRefus, " %")
+      + tdNA(g.del.mean) + tdNA(g.del.median) + tdNA(g.del.min) + tdNA(g.del.max) + "</tr>";
+  });
+  h += "</tbody></table></div></div>";
+
+  /* Tableau par thématique */
+  const totEnvT = byTheme.reduce((s, d) => s + d.agg.env, 0);
+  h += '<div class="bloc"><h3 class="bloc-titre">Tableau comparatif par thématique</h3><div class="table-enveloppe"><table><thead><tr>'
+    + "<th>Thématique</th><th>Envoyés</th><th>Part</th><th>Relances</th><th>Taux relance</th><th>Tx non-rens.</th><th>Tx réponse</th><th>Tx refus</th><th>Délai moy.</th><th>Médian</th><th>Min</th><th>Max</th>"
+    + "</tr></thead><tbody>";
+  byTheme.forEach(d => {
+    const g = d.agg;
+    h += "<tr><td>" + esc(d.label) + "</td>" + td(g.env) + tdNA(pctSafe(g.env, totEnvT), " %") + td(g.relT) + tdNA(g.tauxRel, " %")
+      + tdNA(g.tauxNonRens, " %") + tdNA(g.tauxRep, " %") + tdNA(g.tauxRefus, " %")
+      + tdNA(g.del.mean) + tdNA(g.del.median) + tdNA(g.del.min) + tdNA(g.del.max) + "</tr>";
+  });
+  h += "</tbody></table></div>" + noteBox("Thématiques non exclusives ; « Part » calculée sur la somme des occurrences thématiques.") + "</div>";
+
+  /* Détail catégories de réponse */
+  h += '<div class="bloc"><h3 class="bloc-titre">Détail des catégories de réponse</h3><div class="table-enveloppe"><table><thead><tr><th>Catégorie (libellé exact)</th><th>Nombre</th><th>Part</th></tr></thead><tbody>';
+  byCat.forEach(d => { h += "<tr><td style=\"text-align:left\">" + esc(d.label) + "</td>" + td(d.v) + tdNA(pctSafe(d.v, a.env), " %") + "</tr>"; });
+  h += "</tbody></table></div>" + noteBox("« Non renseigné » = cellule vide (statut absent), distinct de « Pas de réponse ». Les libellés sont repris exactement des données sources.") + "</div>";
+
+  zone.innerHTML = h;
 }
 
 /* ---------------- SORTIES D'ANONYMAT ---------------- */
@@ -662,6 +798,14 @@ function brancherInteractions(id) {
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(fini).catch(fini);
       else { const ta = document.createElement("textarea"); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch (e) {} ta.remove(); fini(); }
     });
+  }
+  if (id === "signalements") {
+    tfFill();
+    const wire = (selId, key) => {
+      const el = document.getElementById(selId);
+      if (el) el.addEventListener("change", () => { TF_F[key] = el.value; tfFill(); });
+    };
+    wire("tf-periode", "periode"); wire("tf-plat", "plat"); wire("tf-theme", "theme");
   }
   if (id === "historique") {
     remplirHistorique();
