@@ -8,10 +8,8 @@
 const SECTIONS = [
   { id: "synthese",     label: "Synthèse direction" },
   { id: "historique",   label: "Comparaison historique" },
-  { id: "mensuel",      label: "Activité mensuelle" },
-  { id: "trimestriel",  label: "Activité trimestrielle" },
-  { id: "telephone",    label: "Téléphone" },
-  { id: "tchat",        label: "Tchat" },
+  { id: "sollicitations", label: "Sollicitations" },
+  { id: "performance",  label: "Performance des canaux" },
   { id: "signalements", label: "Signalements Trusted Flagger" },
   { id: "anonymat",     label: "Sorties d'anonymat" },
   { id: "bik",          label: "Données BIK / Insafe" },
@@ -785,6 +783,7 @@ const RENDERERS = {
   synthese: renderSynthese, historique: renderHistorique, mensuel: renderMensuel, trimestriel: renderTrimestriel,
   telephone: renderTelephone, tchat: renderTchat, signalements: renderSignalements, anonymat: renderAnonymat,
   bik: renderBik, methodologie: renderMethodologie,
+  sollicitations: renderSollicitations, performance: renderPerformance,
 };
 
 /* ---------------- Interactions après rendu ---------------- */
@@ -806,6 +805,39 @@ function brancherInteractions(id) {
       if (el) el.addEventListener("change", () => { TF_F[key] = el.value; tfFill(); });
     };
     wire("tf-periode", "periode"); wire("tf-plat", "plat"); wire("tf-theme", "theme");
+  }
+  if (id === "sollicitations") {
+    solFill();
+    const wire = (selId, key) => {
+      const el = document.getElementById(selId);
+      if (el) el.addEventListener("change", () => { SOL_F[key] = el.value; solFill(); });
+    };
+    wire("sol-canal", "canal"); wire("sol-comp", "comp");
+    const dde = document.getElementById("sol-de"), da = document.getElementById("sol-a");
+    if (dde) dde.addEventListener("change", () => { SOL_F.persoDe = +dde.value; if (SOL_F.periode === "perso") solFill(); });
+    if (da) da.addEventListener("change", () => { SOL_F.persoA = +da.value; if (SOL_F.periode === "perso") solFill(); });
+    const per = document.getElementById("sol-periode");
+    if (per) per.addEventListener("change", () => {
+      SOL_F.periode = per.value;
+      const wrap = document.getElementById("sol-perso");
+      if (wrap) wrap.hidden = (per.value !== "perso");
+      solFill();
+    });
+  }
+  if (id === "performance") {
+    perfFill();
+    const can = document.getElementById("perf-canal");
+    if (can) can.addEventListener("change", () => {
+      PERF_F.canal = can.value;
+      const fw = document.getElementById("perf-file-wrap");
+      if (fw) fw.style.display = (can.value === "telephone") ? "" : "none";
+      perfFill();
+    });
+    const wireP = (selId, key) => {
+      const el = document.getElementById(selId);
+      if (el) el.addEventListener("change", () => { PERF_F[key] = el.value; perfFill(); });
+    };
+    wireP("perf-periode", "periode"); wireP("perf-file", "file");
   }
   if (id === "historique") {
     remplirHistorique();
@@ -878,3 +910,647 @@ async function charger() {
 }
 
 document.addEventListener("DOMContentLoaded", () => { construireNavigation(); charger(); });
+
+/* =================================================================
+   NOUVEAUX ONGLETS — « Sollicitations » et « Performance des canaux »
+   -----------------------------------------------------------------
+   Principe : ces deux onglets REGROUPENT le contenu des anciens onglets
+   « Activité mensuelle », « Activité trimestrielle », « Téléphone » et
+   « Tchat », SANS rien perdre.
+   - Les données mensuelles (activity_monthly.json) sont la source unique.
+   - Les trimestres sont calculés par AGRÉGATION des mois (les totaux
+     trimestriels = somme des mois ; les taux trimestriels sont recalculés
+     à partir des volumes agrégés, jamais comme moyenne des taux mensuels).
+   - La comparaison « même période N-1 » s'appuie sur historical_monthly.json
+     (séries 2024 / 2025 / 2026) pour le total tous canaux.
+   - Distinction stricte conservée : reçues ≠ prises en charge.
+   - Aucune valeur n'est inventée : donnée absente => « n.d. » / « N/A ».
+   ================================================================= */
+
+/* ---------- briques communes aux deux onglets ---------- */
+
+/* Liste des mois 2026 disponibles, avec les mails rattachés. */
+function solMois() {
+  const m = DATA.monthly;
+  if (!m || !m.mois) return [];
+  const tc = (m.activite_traitee_tous_canaux && m.activite_traitee_tous_canaux.par_mois) || [];
+  const mailsByKey = {};
+  tc.forEach(d => { mailsByKey[d.mois] = d; });
+  return m.mois.map(d => {
+    const num = parseInt(String(d.mois).split("-")[1], 10);
+    const mail = mailsByKey[d.mois] || {};
+    return {
+      num: num, key: d.mois, libelle: d.libelle, court: libelleCourt(d.mois),
+      row: d,
+      mails: (mail.mails === undefined ? null : mail.mails),
+      mailStatut: mail.statut || null
+    };
+  });
+}
+
+/* Numéros de mois disponibles en 2026, ex. [1,2,3,4,5]. */
+function solNumsDispo() { return solMois().map(o => o.num); }
+
+/* Valeurs reçu / pris / non pris d'UN mois pour UN canal. */
+function solCanalVals(mo, canal) {
+  const r = mo.row;
+  if (canal === "telephone") {
+    return { recu: r.appels_recus, pris: r.appels_decroches, nonPris: r.appels_abandonnes };
+  }
+  if (canal === "tchat") {
+    const recu = r.tchats_recus, pris = r.tchats_traites;
+    return { recu: recu, pris: pris, nonPris: (recu != null && pris != null) ? recu - pris : null };
+  }
+  if (canal === "mail") {
+    return { recu: null, pris: mo.mails, nonPris: null };
+  }
+  /* tous canaux */
+  const recu = r.sollicitations_entrantes, pris = r.volume_activite_traite;
+  return { recu: recu, pris: pris, nonPris: (recu != null && pris != null) ? recu - pris : null };
+}
+
+/* Timeline « à plat » sur 36 mois : index 0 = janv. 2024 … 35 = déc. 2026.
+   indic = "recu" ou "pris". Pour le total tous canaux on lit l'historique
+   multi-années ; par canal on n'a que 2026 (le reste reste null). */
+function solFlat(canal, indic) {
+  const out = new Array(36).fill(null);
+  if (canal === "tous") {
+    const h = DATA.historical && DATA.historical.series;
+    const src = h ? (indic === "recu" ? h.sollicitations : h.contacts_traites) : null;
+    if (src) {
+      ["2024", "2025", "2026"].forEach((y, yi) => {
+        (src[y] || []).forEach((v, mi) => { out[yi * 12 + mi] = (v == null ? null : v); });
+      });
+    }
+    return out;
+  }
+  solMois().forEach(mo => {
+    const v = solCanalVals(mo, canal);
+    out[24 + (mo.num - 1)] = (indic === "recu" ? v.recu : v.pris);
+  });
+  return out;
+}
+
+/* Somme « null-safe » sur des index : renvoie null si aucune valeur. */
+function solSum(arr, idxs) {
+  let s = 0, has = false;
+  idxs.forEach(i => { if (arr[i] != null) { s += arr[i]; has = true; } });
+  return has ? s : null;
+}
+
+/* Index (0..11) des mois retenus en 2026 selon les filtres. */
+function solMoisRetenus(F) {
+  const avail = solNumsDispo();
+  let nums;
+  if (F.periode === "annee") nums = avail.slice();
+  else if (F.periode === "Q1") nums = avail.filter(n => n <= 3);
+  else if (F.periode === "Q2") nums = avail.filter(n => n >= 4 && n <= 6);
+  else if (F.periode.slice(0, 2) === "m:") { const n = +F.periode.slice(2); nums = avail.indexOf(n) >= 0 ? [n] : []; }
+  else if (F.periode === "perso") {
+    const a = +F.persoDe, b = +F.persoA, lo = Math.min(a, b), hi = Math.max(a, b);
+    nums = avail.filter(n => n >= lo && n <= hi);
+  } else nums = avail.slice();
+  return nums;
+}
+
+/* Agrégat reçu/pris/non-pris/taux pour un canal sur des numéros de mois 2026. */
+function solAgg(canal, nums) {
+  const idx = nums.map(n => 24 + (n - 1));
+  const recu = solSum(solFlat(canal, "recu"), idx);
+  const pris = solSum(solFlat(canal, "pris"), idx);
+  let nonPris = null;
+  if (recu != null && pris != null) nonPris = recu - pris;
+  else { /* mail : reçu inconnu => non-pris inconnu */ nonPris = null; }
+  const taux = (recu != null && recu > 0 && pris != null) ? Math.round(pris / recu * 1000) / 10 : null;
+  return { recu: recu, pris: pris, nonPris: nonPris, taux: taux };
+}
+
+/* Agrégat de comparaison (mode "prec" = période précédente, "n1" = N-1)
+   sur la même longueur de période. Renvoie null si rien d'exploitable. */
+function solAggComp(canal, nums, mode) {
+  if (!nums.length) return null;
+  const fr = solFlat(canal, "recu"), fp = solFlat(canal, "pris");
+  const idx2026 = nums.map(n => 24 + (n - 1));
+  let idx;
+  if (mode === "n1") idx = idx2026.map(i => i - 12);       /* même mois, année précédente */
+  else idx = idx2026.map(i => i - nums.length);            /* fenêtre de même longueur juste avant */
+  if (idx.some(i => i < 0)) return null;
+  const recu = solSum(fr, idx), pris = solSum(fp, idx);
+  if (recu == null && pris == null) return null;
+  const nonPris = (recu != null && pris != null) ? recu - pris : null;
+  const taux = (recu != null && recu > 0 && pris != null) ? Math.round(pris / recu * 1000) / 10 : null;
+  return { recu: recu, pris: pris, nonPris: nonPris, taux: taux };
+}
+
+/* Libellé lisible de la période sélectionnée. */
+function solLibellePeriode(F) {
+  if (F.periode === "annee") return "année 2026 à date";
+  if (F.periode === "Q1") return "T1 2026 (janv.–mars)";
+  if (F.periode === "Q2") return "T2 2026 (avr.–juin, partiel)";
+  if (F.periode.slice(0, 2) === "m:") return MOIS_COURT[String(+F.periode.slice(2)).padStart(2, "0")] + " 2026";
+  if (F.periode === "perso") {
+    const a = MOIS_COURT[String(F.persoDe).padStart(2, "0")], b = MOIS_COURT[String(F.persoA).padStart(2, "0")];
+    return "de " + a + " à " + b + " 2026";
+  }
+  return "";
+}
+function solLibelleComp(F) {
+  if (F.comp === "prec") return "période précédente";
+  if (F.comp === "n1") return "même période 2025";
+  return null;
+}
+
+/* KPI avec badge d'évolution optionnel. unite "pct" => écart en points. */
+function kpiCmp(label, cur, comp, sub, isPct, tone) {
+  let h = '<div class="kpi ' + (tone || "") + '"><p class="kpi-label">' + esc(label) + "</p>";
+  h += '<p class="kpi-valeur">' + (isPct ? showPct(cur) : show(cur)) + "</p>";
+  if (comp !== null && comp !== undefined && cur != null) h += evoBadge(cur, comp, isPct ? "pt" : undefined);
+  if (sub) h += '<p class="kpi-sub">' + esc(sub) + "</p>";
+  return h + "</div>";
+}
+
+/* ================================================================
+   ONGLET « SOLLICITATIONS »  (ex activité mensuelle + trimestrielle)
+   ================================================================ */
+let SOL_F = { periode: "annee", canal: "tous", comp: "aucune", persoDe: 1, persoA: 5 };
+
+const SOL_CANAUX = [
+  { v: "tous", label: "Tous les canaux" },
+  { v: "telephone", label: "Téléphone" },
+  { v: "tchat", label: "Tchat" },
+  { v: "mail", label: "Mail" }
+];
+
+function solOptionsPeriode() {
+  const avail = solNumsDispo();
+  let o = '<option value="annee">Année 2026 (cumul à date)</option>';
+  o += '<option value="Q1">T1 — janv. à mars</option>';
+  o += '<option value="Q2">T2 — avr. à juin (partiel)</option>';
+  avail.forEach(n => { o += '<option value="m:' + n + '">' + MOIS_COURT[String(n).padStart(2, "0")] + ' 2026</option>'; });
+  o += '<option value="perso">Période personnalisée…</option>';
+  return o;
+}
+function solOptionsMois(sel) {
+  return solNumsDispo().map(n =>
+    '<option value="' + n + '"' + (n === sel ? " selected" : "") + ">" + MOIS_COURT[String(n).padStart(2, "0")] + "</option>"
+  ).join("");
+}
+
+function renderSollicitations() {
+  const m = DATA.monthly;
+  if (!m || !m.mois) return '<p class="intro">Données indisponibles.</p>';
+  let h = '<p class="intro">' + esc((m._meta && m._meta.avertissement) || "") +
+    ' Reçues = sollicitations entrantes ; prises en charge = activité traitée. Ces deux notions ne sont jamais fusionnées.</p>';
+
+  h += '<div class="tf-filtres">'
+    + '<label>Période<select id="sol-periode">' + solOptionsPeriode() + "</select></label>"
+    + '<label>Canal<select id="sol-canal">' + SOL_CANAUX.map(c => '<option value="' + c.v + '">' + c.label + "</option>").join("") + "</select></label>"
+    + '<label>Comparaison<select id="sol-comp">'
+    + '<option value="aucune">Aucune</option>'
+    + '<option value="prec">Période précédente</option>'
+    + '<option value="n1">Même période 2025</option>'
+    + "</select></label>"
+    + '<span id="sol-perso" class="sol-perso" hidden>'
+    + '<label>De<select id="sol-de">' + solOptionsMois(1) + "</select></label>"
+    + '<label>À<select id="sol-a">' + solOptionsMois(5) + "</select></label>"
+    + "</span>"
+    + "</div>";
+  h += '<div id="sol-zone"></div>';
+  return h;
+}
+
+function solFill() {
+  const zone = document.getElementById("sol-zone");
+  if (!zone) return;
+  const F = SOL_F;
+  const nums = solMoisRetenus(F);
+  const canalLabel = (SOL_CANAUX.find(c => c.v === F.canal) || {}).label;
+  const a = solAgg(F.canal, nums);
+  const comp = (F.comp === "aucune") ? null : solAggComp(F.canal, nums, F.comp);
+  const compLbl = solLibelleComp(F);
+
+  let h = '<p class="periode-tag">Sélection : ' + esc(canalLabel) + " — " + esc(solLibellePeriode(F))
+    + (compLbl ? " · comparé à : " + esc(compLbl) : "") + "</p>";
+
+  if (!nums.length) {
+    return void (zone.innerHTML = h + noteBox("Aucun mois disponible pour cette sélection.", "vigilance"));
+  }
+
+  /* ----- 4 cartes KPI (distinction reçu / pris stricte) ----- */
+  const subMail = (F.canal === "mail") ? "mails : prise en charge uniquement (pas de « reçus » dans les sources)" : "";
+  h += '<div class="kpis hero">'
+    + kpiCmp("Sollicitations reçues", a.recu, comp ? comp.recu : null, F.canal === "mail" ? "non disponible pour le mail" : "entrantes", false, "")
+    + kpiCmp("Prises en charge", a.pris, comp ? comp.pris : null, "traitées", false, "primaire")
+    + kpiCmp("Non prises en charge", a.nonPris, comp ? comp.nonPris : null, subMail || "reçues − prises", false, "")
+    + kpiCmp("Taux de prise en charge", a.taux, comp ? comp.taux : null, "prises / reçues", true,
+        (a.taux != null && a.taux < 30) ? "vigilance" : "")
+    + "</div>";
+
+  if (F.canal === "mail") h += noteBox("Canal mail : seules les sollicitations <strong>traitées</strong> existent dans les sources (fév.–mai, mai partiel au 26/05). « Reçus », « non prises » et « taux » ne sont donc pas calculables.");
+
+  /* ----- bloc comparaison chiffrée (écart absolu + %) ----- */
+  if (comp) {
+    h += '<div class="bloc"><h3 class="bloc-titre">Comparaison avec la ' + esc(compLbl) + '</h3>'
+      + '<div class="table-enveloppe"><table><thead><tr><th>Indicateur</th><th>Sélection</th><th>' + esc(compLbl) + '</th><th>Écart</th><th>Évolution</th></tr></thead><tbody>'
+      + solLigneComp("Reçues", a.recu, comp.recu, false)
+      + solLigneComp("Prises en charge", a.pris, comp.pris, false)
+      + solLigneComp("Non prises en charge", a.nonPris, comp.nonPris, false)
+      + solLigneComp("Taux de prise en charge", a.taux, comp.taux, true)
+      + "</tbody></table></div>";
+    if (F.comp === "n1" && F.canal !== "tous") h += noteBox("Comparaison 2025 par canal indisponible : l'historique mensuel ne distingue pas les canaux. Disponible pour « Tous les canaux ».", "vigilance");
+    h += "</div>";
+  }
+
+  /* ----- répartition par canal (uniquement vue « tous ») ----- */
+  if (F.canal === "tous") {
+    const parCanal = ["telephone", "tchat", "mail"].map(c => {
+      const ag = solAgg(c, nums);
+      return { label: (SOL_CANAUX.find(x => x.v === c) || {}).label, recu: ag.recu, pris: ag.pris };
+    });
+    h += '<div class="bloc"><h3 class="bloc-titre">Répartition par canal — prises en charge (' + esc(solLibellePeriode(F)) + ")</h3>"
+      + htmlHBars(parCanal.map(d => ({ label: d.label, v: d.pris })), BLEU) + "</div>";
+    h += '<div class="bloc"><h3 class="bloc-titre">Répartition par canal — sollicitations reçues</h3>'
+      + htmlHBars(parCanal.filter(d => d.recu != null).map(d => ({ label: d.label, v: d.recu })), JAUNE)
+      + noteBox("Le mail n'apparaît pas en « reçues » (donnée absente des sources).") + "</div>";
+  }
+
+  /* ----- évolution mensuelle (toute l'année dispo, canal sélectionné) ----- */
+  const moisAll = solMois();
+  const idxPart = moisAll.findIndex(mo => String(mo.row.observation || "").toLowerCase().includes("partiel") || (mo.mailStatut && String(mo.mailStatut).includes("partiel")));
+  const serieRecu = moisAll.map(mo => ({ label: mo.court.replace(" 2026", ""), v: solCanalVals(mo, F.canal).recu }));
+  const seriePris = moisAll.map(mo => ({ label: mo.court.replace(" 2026", ""), v: solCanalVals(mo, F.canal).pris }));
+
+  if (serieRecu.some(d => d.v != null)) {
+    h += '<div class="bloc"><h3 class="bloc-titre">Évolution mensuelle — sollicitations reçues</h3><div class="graph">'
+      + svgBars(serieRecu, BLEU, -1) + "</div></div>";
+  }
+  if (seriePris.some(d => d.v != null)) {
+    h += '<div class="bloc"><h3 class="bloc-titre">Évolution mensuelle — prises en charge</h3><div class="graph">'
+      + svgBars(seriePris, JAUNE, F.canal === "mail" ? idxPart : -1) + "</div>"
+      + (F.canal === "mail" ? noteBox("Barre hachurée : mois aux mails partiels.") : "") + "</div>";
+  }
+  /* reçu vs pris (si les deux existent) */
+  if (serieRecu.some(d => d.v != null) && seriePris.some(d => d.v != null)) {
+    const grp = moisAll.map(mo => {
+      const v = solCanalVals(mo, F.canal);
+      return { label: mo.court.replace(" 2026", ""), recus: v.recu, pris: v.pris };
+    });
+    h += '<div class="bloc"><h3 class="bloc-titre">Reçues vs prises en charge par mois</h3><div class="graph">'
+      + svgGroupedBars(grp, "recus", "pris", BLEU, JAUNE) + "</div>"
+      + legende([{ label: "Reçues", color: BLEU }, { label: "Prises en charge", color: JAUNE }]) + "</div>";
+    /* taux mensuel */
+    const labelsM = moisAll.map(mo => mo.court.replace(" 2026", ""));
+    const tauxM = moisAll.map(mo => { const v = solCanalVals(mo, F.canal); return (v.recu && v.recu > 0 && v.pris != null) ? Math.round(v.pris / v.recu * 1000) / 10 : null; });
+    h += '<div class="bloc"><h3 class="bloc-titre">Taux de prise en charge par mois</h3><div class="graph">'
+      + svgLineChart(labelsM, [{ data: tauxM, color: VERT }], "pct") + "</div></div>";
+  }
+
+  /* ----- comparaison multi-années (vue « tous » + comparaison N-1) ----- */
+  if (F.canal === "tous" && F.comp === "n1") {
+    const h2 = DATA.historical;
+    if (h2 && h2.series) {
+      const labels = h2.mois_labels;
+      h += '<div class="bloc"><h3 class="bloc-titre">Sollicitations reçues — 2024 / 2025 / 2026</h3><div class="graph">'
+        + svgLineChart(labels, [
+          { data: h2.series.sollicitations["2024"], color: GRIS },
+          { data: h2.series.sollicitations["2025"], color: JAUNE },
+          { data: h2.series.sollicitations["2026"], color: BLEU }
+        ]) + "</div>"
+        + legende([{ label: "2024", color: GRIS }, { label: "2025", color: JAUNE }, { label: "2026", color: BLEU }])
+        + noteBox("Vue complète dans l'onglet « Comparaison historique ».") + "</div>";
+    }
+  }
+
+  /* ----- VUE TRIMESTRIELLE (T1, T2) — reprise de l'ancien onglet ----- */
+  h += solBlocTrimestres();
+
+  /* ----- TABLEAUX DÉTAILLÉS (toutes les valeurs sources, vérifiables) ----- */
+  h += solTableauMensuelDetaille();
+  h += solTableauTousCanaux();
+  h += solObservations();
+
+  zone.innerHTML = h;
+}
+
+function solLigneComp(label, cur, comp, isPct) {
+  const ecart = (cur != null && comp != null) ? (Math.round((cur - comp) * 10) / 10) : null;
+  const ecartTxt = ecart == null ? '<td class="nd">n.d.</td>' : "<td>" + (ecart > 0 ? "+" : "") + nf(ecart) + (isPct ? " pt" : "") + "</td>";
+  return "<tr><td style=\"text-align:left\">" + esc(label) + "</td>"
+    + (isPct ? td(cur, true) : td(cur)) + (isPct ? td(comp, true) : td(comp))
+    + ecartTxt + "<td>" + (cur != null && comp != null ? evoBadge(cur, comp, isPct ? "pt" : undefined) : '<span class="evo neutre">n.d.</span>') + "</td></tr>";
+}
+
+/* Trimestres calculés par agrégation des mois (totaux = somme ; taux recalculés). */
+function solBlocTrimestres() {
+  const q = DATA.quarterly || {};
+  let h = '<div class="bloc"><h3 class="bloc-titre">Vue trimestrielle 2026 (calculée par agrégation des mois)</h3>';
+  if (q._meta && q._meta.avertissement) h += noteBox(esc(q._meta.avertissement));
+  [["Q1", [1, 2, 3]], ["Q2", [4, 5, 6]]].forEach(([qLabel, qNums]) => {
+    const nums = qNums.filter(n => solNumsDispo().indexOf(n) >= 0);
+    if (!nums.length) return;
+    const tous = solAgg("tous", nums), tel = solAgg("telephone", nums), tch = solAgg("tchat", nums), mail = solAgg("mail", nums);
+    const sig = solSumChamp(nums, "signalements_trusted_flagger");
+    const sorties = solSumChamp(nums, "sorties_anonymat");
+    const partiel = (qLabel === "Q2");
+    h += '<div class="sous-bloc"><h4 class="sous-bloc-titre">' + qLabel + " 2026 "
+      + '<span class="badge ' + (partiel ? "partiel" : "consolide") + '">'
+      + (partiel ? "en cours (juin non inclus)" : "consolidé") + "</span></h4>";
+    h += '<div class="kv">'
+      + solKV("Sollicitations reçues", tous.recu) + solKV("Prises en charge (tous canaux)", tous.pris)
+      + solKV("Taux de prise en charge", tous.taux, true)
+      + solKV("Appels reçus", tel.recu) + solKV("Appels décrochés", tel.pris)
+      + solKV("Appels abandonnés", tel.nonPris) + solKV("Taux de réponse appels", tel.taux, true)
+      + solKV("Tchats reçus", tch.recu) + solKV("Tchats traités", tch.pris)
+      + solKV("Taux de prise tchat", tch.taux, true)
+      + solKV("Mails traités", mail.pris)
+      + solKV("Signalements TF", sig) + solKV("Sorties d'anonymat", sorties)
+      + "</div></div>";
+  });
+  h += noteBox("Conformément aux règles : totaux trimestriels = somme des mois ; taux trimestriels recalculés sur les volumes agrégés (pas une moyenne des taux mensuels). Tchat Q1 = févr.+mars (janvier absent de l'export tchat).");
+  return h + "</div>";
+}
+function solSumChamp(nums, champ) {
+  let s = 0, has = false;
+  solMois().forEach(mo => { if (nums.indexOf(mo.num) >= 0 && mo.row[champ] != null) { s += mo.row[champ]; has = true; } });
+  return has ? s : null;
+}
+function solKV(label, v, isPct) {
+  return '<div class="k">' + esc(label) + '</div><div class="v">' + (v == null ? "n.d." : (isPct ? showPct(v) : show(v))) + "</div>";
+}
+
+/* Grand tableau mensuel : toutes les colonnes de l'ancien onglet + champs
+   auparavant masqués (abandonnés, reçues entrantes, mails). */
+function solTableauMensuelDetaille() {
+  const moisAll = solMois();
+  let h = '<div class="bloc"><h3 class="bloc-titre">Tableau détaillé mensuel — valeurs sources</h3>'
+    + '<div class="table-enveloppe"><table><thead><tr>'
+    + "<th>Mois</th><th>Sollic. reçues</th><th>Appels reçus</th><th>Décrochés</th><th>Appels aband.</th><th>Taux rép.</th>"
+    + "<th>Tchats reçus</th><th>Tchats traités</th><th>Taux prise</th><th>Mails</th>"
+    + "<th>Activité traitée<br>(tous canaux)</th><th>Signal. TF</th><th>Sorties anon.</th>"
+    + "</tr></thead><tbody>";
+  moisAll.forEach(mo => {
+    const d = mo.row;
+    h += '<tr><td class="cellule-mois">' + esc(d.libelle) + "</td>"
+      + td(d.sollicitations_entrantes) + td(d.appels_recus) + td(d.appels_decroches) + td(d.appels_abandonnes) + td(d.taux_reponse_appels_pct, true)
+      + td(d.tchats_recus) + td(d.tchats_traites) + td(d.taux_prise_tchat_pct, true) + td(mo.mails)
+      + td(d.volume_activite_traite) + td(d.signalements_trusted_flagger) + td(d.sorties_anonymat) + "</tr>";
+  });
+  h += "</tbody></table></div>"
+    + noteBox("Taux de réponse téléphone = décrochés / reçus (base files 3CX). Activité traitée tous canaux = appels décrochés + tchats traités + mails. Janvier : tchat indisponible (export démarre le 01/02).") + "</div>";
+  return h;
+}
+
+/* Tableau « activité traitée tous canaux » repris de l'ancien onglet mensuel. */
+function solTableauTousCanaux() {
+  const m = DATA.monthly, tc = m && m.activite_traitee_tous_canaux;
+  if (!tc || !tc.par_mois) return "";
+  let h = '<div class="bloc"><h3 class="bloc-titre">Activité traitée tous canaux (appels décrochés + tchats traités + mails)</h3>'
+    + '<div class="table-enveloppe"><table><thead><tr><th>Mois</th><th>Appels décrochés</th><th>Tchats traités</th><th>Mails</th><th>Total</th></tr></thead><tbody>';
+  tc.par_mois.forEach(d => {
+    const part = String(d.statut).includes("partiel");
+    h += '<tr><td class="cellule-mois">' + esc(libelleCourt(d.mois)) + (part ? ' <span class="mini-badge part">mails part.</span>' : "") + "</td>"
+      + td(d.appels_decroches) + td(d.tchats_traites) + td(d.mails) + "<td><strong>" + show(d.total) + "</strong></td></tr>";
+  });
+  if (tc.totaux_fev_mai) {
+    const t = tc.totaux_fev_mai;
+    h += '<tr class="ligne-total"><td>Total fév.–mai' + (t.mails_mai_partiels ? " (mails mai partiels)" : "") + "</td>"
+      + td(t.appels_decroches) + td(t.tchats_traites) + td(t.mails) + "<td>" + show(t.total) + "</td></tr>";
+  }
+  h += "</tbody></table></div>" + noteBox(esc(tc.note)) + "</div>";
+  return h;
+}
+
+/* Observations mensuelles reprises de l'ancien onglet. */
+function solObservations() {
+  const moisAll = solMois().filter(mo => mo.row.observation);
+  if (!moisAll.length) return "";
+  return '<div class="bloc"><h3 class="bloc-titre">Observations</h3><ul class="liste-propre">'
+    + moisAll.map(mo => "<li><strong>" + esc(mo.row.libelle) + " :</strong> " + esc(mo.row.observation) + "</li>").join("")
+    + "</ul></div>";
+}
+
+/* ================================================================
+   ONGLET « PERFORMANCE DES CANAUX »  (ex Téléphone + Tchat + Mail)
+   ================================================================ */
+let PERF_F = { canal: "telephone", periode: "annee", file: "__all__" };
+
+function perfOptionsPeriode() {
+  const avail = solNumsDispo();
+  let o = '<option value="annee">Toute la période</option>';
+  o += '<option value="Q1">T1 — janv. à mars</option>';
+  o += '<option value="Q2">T2 — avr. à juin (partiel)</option>';
+  avail.forEach(n => { o += '<option value="m:' + n + '">' + MOIS_COURT[String(n).padStart(2, "0")] + ' 2026</option>'; });
+  return o;
+}
+
+function renderPerformance() {
+  let h = '<p class="intro">Performance par canal de contact. Sélectionnez un canal ; « Tous les canaux » agglomère l\'activité traitée.</p>';
+  const canaux = [
+    { v: "telephone", label: "Téléphone" },
+    { v: "tchat", label: "Tchat" },
+    { v: "mail", label: "Mail" },
+    { v: "tous", label: "Tous les canaux (agglomérés)" }
+  ];
+  h += '<div class="tf-filtres">'
+    + '<label>Canal<select id="perf-canal">' + canaux.map(c => '<option value="' + c.v + '">' + c.label + "</option>").join("") + "</select></label>"
+    + '<label>Période<select id="perf-periode">' + perfOptionsPeriode() + "</select></label>"
+    + '<span id="perf-file-wrap"><label>File téléphonique<select id="perf-file">'
+    + '<option value="__all__">Toutes les files</option>'
+    + (((DATA.phone && DATA.phone.par_file_periode) || []).map(f => '<option value="' + escAttr(f.file_3cx) + '">' + esc(f.libelle || f.file_3cx) + "</option>").join(""))
+    + "</select></label></span>"
+    + "</div>";
+  h += '<div id="perf-zone"></div>';
+  return h;
+}
+
+function perfFill() {
+  const zone = document.getElementById("perf-zone");
+  if (!zone) return;
+  const F = PERF_F;
+  if (F.canal === "telephone") zone.innerHTML = perfTelephone(F);
+  else if (F.canal === "tchat") zone.innerHTML = perfTchat(F);
+  else if (F.canal === "mail") zone.innerHTML = perfMail(F);
+  else zone.innerHTML = perfTous(F);
+}
+
+/* nums de mois retenus pour Performance (réutilise la logique) */
+function perfNums(F) { return solMoisRetenus({ periode: F.periode }); }
+
+/* ---- Téléphone : reprend tout l'ancien onglet + filtre période/file ---- */
+function perfTelephone(F) {
+  const p = DATA.phone;
+  if (!p) return '<p class="intro">Données indisponibles.</p>';
+  const nums = perfNums(F);
+  const moisDansP = (p.par_mois || []).filter(d => nums.indexOf(parseInt(String(d.mois).split("-")[1], 10)) >= 0);
+
+  /* KPI agrégés sur la période choisie (ou file si sélectionnée) */
+  let recu, dec, aband, tauxLbl;
+  if (F.file !== "__all__") {
+    const f = (p.par_file_periode || []).find(x => x.file_3cx === F.file) || {};
+    recu = f.appels_recus; dec = f.appels_decroches; aband = f.appels_abandonnes;
+    tauxLbl = "file — sur toute la période";
+  } else {
+    recu = moisDansP.reduce((s, d) => s + (d.appels_recus || 0), 0);
+    dec = moisDansP.reduce((s, d) => s + (d.appels_decroches || 0), 0);
+    aband = moisDansP.reduce((s, d) => s + (d.appels_abandonnes || 0), 0);
+    if (!moisDansP.length) { recu = dec = aband = null; }
+    tauxLbl = "décrochés / reçus";
+  }
+  const taux = (recu && recu > 0) ? Math.round(dec / recu * 1000) / 10 : null;
+
+  let h = '<p class="periode-tag">' + esc((p._meta && p._meta.periode) || "") + " · " + esc(solLibellePeriode({ periode: F.periode }))
+    + (F.file !== "__all__" ? " · file sélectionnée" : "") + "</p>";
+  h += '<div class="kpis">'
+    + kpi("Appels reçus", show(recu), "période", "")
+    + kpi("Appels décrochés", show(dec), "indicateur prioritaire", "primaire")
+    + kpi("Appels abandonnés", show(aband), "non répondus", "")
+    + kpi("Taux de réponse", showPct(taux), tauxLbl, (taux != null && taux < 30) ? "vigilance" : "")
+    + "</div>";
+  if (F.file !== "__all__") h += noteBox("Les statistiques par file ne sont disponibles que sur l'ensemble de la période (pas de ventilation mensuelle par file dans les sources). Le filtre « période » n'affecte donc pas ce bloc.", "vigilance");
+
+  /* tendance taux de réponse */
+  if (p.par_mois) {
+    const tx = tendance(p.par_mois.map(d => d.taux_reponse_pct));
+    if (tx) h += lectureBox("Lecture", [{ cls: tx.cls, txt: "Taux de réponse " + (tx.cls === "hausse" ? "en amélioration" : tx.cls === "baisse" ? "en recul" : "stable") + " sur la période (" + libelleCourt(p.par_mois[tx.idxA].mois) + " " + showPct(tx.premier) + " → " + libelleCourt(p.par_mois[tx.idxB].mois) + " " + showPct(tx.dernier) + ")." }]);
+  }
+
+  /* tableau mensuel (+ temps total auparavant masqué) */
+  if (p.par_mois) {
+    h += '<div class="bloc"><h3 class="bloc-titre">Détail mensuel</h3><div class="table-enveloppe"><table><thead><tr><th>Mois</th><th>Reçus</th><th>Décrochés</th><th>Abandonnés</th><th>Taux rép.</th><th>Durée moy.</th><th>Temps total conv.</th></tr></thead><tbody>';
+    p.par_mois.forEach(d => {
+      const dim = nums.indexOf(parseInt(String(d.mois).split("-")[1], 10)) < 0 ? ' class="hors-periode"' : "";
+      h += "<tr" + dim + '><td class="cellule-mois">' + esc(libelleCourt(d.mois)) + "</td>"
+        + td(d.appels_recus) + td(d.appels_decroches) + td(d.appels_abandonnes) + td(d.taux_reponse_pct, true)
+        + "<td>" + esc(d.duree_moyenne_appel || "n.d.") + "</td><td>" + esc(d.temps_total_conversation || "n.d.") + "</td></tr>";
+    });
+    h += "</tbody></table></div>" + noteBox("Les mois hors période sélectionnée sont grisés mais conservés pour vérification.") + "</div>";
+  }
+
+  /* graphe reçus vs décrochés */
+  if (p.par_mois) {
+    const items = p.par_mois.map(d => ({ label: libelleCourt(d.mois).replace(" 2026", ""), recus: d.appels_recus, dec: d.appels_decroches }));
+    h += '<div class="bloc"><h3 class="bloc-titre">Appels reçus et décrochés par mois</h3><div class="graph">'
+      + svgGroupedBars(items, "recus", "dec", BLEU, JAUNE) + "</div>"
+      + legende([{ label: "Reçus", color: BLEU }, { label: "Décrochés", color: JAUNE }]) + "</div>";
+  }
+
+  /* tableau files 3CX (filtré) */
+  if (p.par_file_periode) {
+    const files = p.par_file_periode.filter(f => F.file === "__all__" || f.file_3cx === F.file);
+    h += '<div class="bloc"><h3 class="bloc-titre">Files 3CX (sur toute la période)</h3><div class="table-enveloppe"><table><thead><tr><th>File</th><th>Rôle supposé</th><th>Reçus</th><th>Décrochés</th><th>Abandonnés</th></tr></thead><tbody>';
+    files.forEach(f => { h += "<tr><td>" + esc(f.libelle || f.file_3cx) + '</td><td style="text-align:left">' + esc(f.role_suppose || "") + "</td>" + td(f.appels_recus) + td(f.appels_decroches) + td(f.appels_abandonnes) + "</tr>"; });
+    h += "</tbody></table></div>" + noteBox("Files 900 (3018 Mineur), 902 (après 17h) et 903 (violence numérique) isolables via le filtre ci-dessus.") + "</div>";
+  }
+  if (p.note_methodologique) h += noteBox(esc(p.note_methodologique));
+  return h;
+}
+
+/* ---- Tchat : reprend tout l'ancien onglet + indicateurs auparavant masqués ---- */
+function perfTchat(F) {
+  const c = DATA.chat;
+  if (!c) return '<p class="intro">Données indisponibles.</p>';
+  const nums = perfNums(F);
+  const s = c.synthese_periode || {};
+  const moisDans = (c.par_mois || []).filter(d => nums.indexOf(parseInt(String(d.mois).split("-")[1], 10)) >= 0);
+  const recu = moisDans.reduce((a, d) => a + (d.tchats_recus || 0), 0);
+  const trait = moisDans.reduce((a, d) => a + (d.tchats_traites || 0), 0);
+  const aband = moisDans.reduce((a, d) => a + (d.tchats_abandonnes || 0), 0);
+  const taux = (recu > 0) ? Math.round(trait / recu * 1000) / 10 : null;
+  const vide = moisDans.length === 0;
+
+  let h = '<p class="periode-tag">' + esc((c._meta && c._meta.periode) || "") + " · " + esc(solLibellePeriode({ periode: F.periode })) + "</p>";
+  if (c._meta && c._meta.perimetre) h += '<p class="intro">' + esc(c._meta.perimetre) + "</p>";
+  h += '<div class="kpis">'
+    + kpi("Tchats reçus", vide ? "n.d." : show(recu), "période", "")
+    + kpi("Tchats traités", vide ? "n.d." : show(trait), "un écoutant a rejoint", "primaire")
+    + kpi("Tchats abandonnés", vide ? "n.d." : show(aband), "jamais pris", "")
+    + kpi("Taux de prise", vide ? "n.d." : showPct(taux), "traités / reçus", "")
+    + "</div>";
+  /* indicateurs auparavant non affichés (niveau période globale) */
+  h += '<div class="kpis">'
+    + kpi("Attente médiane", show(s.attente_mediane_min) + " min", "avant prise en charge", "")
+    + kpi("Attente moyenne", show(s.attente_moyenne_min) + " min", "avant prise en charge", "")
+    + kpi("Durée médiane d'échange", show(s.duree_mediane_session_min) + " min", "par session", "")
+    + "</div>" + noteBox("Temps d'attente et durée d'échange : disponibles uniquement sur l'ensemble de la période (fév.–mai), pas par mois.");
+
+  if (c.par_mois) {
+    h += '<div class="bloc"><h3 class="bloc-titre">Détail mensuel</h3><div class="table-enveloppe"><table><thead><tr><th>Mois</th><th>Reçus</th><th>Traités</th><th>Abandonnés</th><th>Taux prise</th></tr></thead><tbody>';
+    c.par_mois.forEach(d => {
+      const dim = nums.indexOf(parseInt(String(d.mois).split("-")[1], 10)) < 0 ? ' class="hors-periode"' : "";
+      h += "<tr" + dim + '><td class="cellule-mois">' + esc(libelleCourt(d.mois)) + "</td>" + td(d.tchats_recus) + td(d.tchats_traites) + td(d.tchats_abandonnes) + td(d.taux_prise_pct, true) + "</tr>";
+    });
+    h += "</tbody></table></div></div>";
+    const items = c.par_mois.map(d => ({ label: libelleCourt(d.mois).replace(" 2026", ""), recus: d.tchats_recus, traites: d.tchats_traites }));
+    h += '<div class="bloc"><h3 class="bloc-titre">Tchats reçus et traités par mois</h3><div class="graph">'
+      + svgGroupedBars(items, "recus", "traites", BLEU, JAUNE) + "</div>"
+      + legende([{ label: "Reçus", color: BLEU }, { label: "Traités", color: JAUNE }]) + "</div>";
+  }
+  if (c.note_methodologique) h += noteBox(esc(c.note_methodologique));
+  return h;
+}
+
+/* ---- Mail ---- */
+function perfMail(F) {
+  const moisAll = solMois();
+  const nums = perfNums(F);
+  const dans = moisAll.filter(mo => nums.indexOf(mo.num) >= 0 && mo.mails != null);
+  const tot = dans.length ? dans.reduce((a, mo) => a + mo.mails, 0) : null;
+  let h = '<p class="periode-tag">Mail — ' + esc(solLibellePeriode({ periode: F.periode })) + "</p>";
+  h += '<div class="kpis">'
+    + kpi("Mails traités", show(tot), "sur la période", "primaire")
+    + kpi("Mails reçus", "N/A", "non disponible dans les sources", "")
+    + kpi("Taux de prise", "N/A", "non calculable", "")
+    + "</div>";
+  h += noteBox("Le mail n'est suivi qu'en <strong>traités</strong> (export Salesforce Case), de février à mai, mai partiel au 26/05. Pas de volume « reçu » dans les sources, donc pas de taux de prise.", "vigilance");
+  h += '<div class="bloc"><h3 class="bloc-titre">Mails traités par mois</h3><div class="table-enveloppe"><table><thead><tr><th>Mois</th><th>Mails traités</th><th>Statut</th></tr></thead><tbody>';
+  moisAll.forEach(mo => {
+    h += '<tr><td class="cellule-mois">' + esc(mo.libelle) + "</td>" + td(mo.mails) + "<td>" + esc(mo.mailStatut || "n.d.") + "</td></tr>";
+  });
+  h += "</tbody></table></div>";
+  const items = moisAll.filter(mo => mo.mails != null).map(mo => ({ label: mo.court.replace(" 2026", ""), v: mo.mails }));
+  if (items.length) h += '<div class="graph">' + svgBars(items, BLEU, items.length - 1) + "</div>" + noteBox("Dernière barre hachurée : mai (mails partiels).");
+  return h + "</div>";
+}
+
+/* ---- Tous canaux agglomérés ---- */
+function perfTous(F) {
+  const m = DATA.monthly, tc = m && m.activite_traitee_tous_canaux;
+  const nums = perfNums(F);
+  let h = '<p class="periode-tag">Tous canaux agglomérés — ' + esc(solLibellePeriode({ periode: F.periode })) + "</p>";
+
+  const tel = solAgg("telephone", nums), tch = solAgg("tchat", nums), mail = solAgg("mail", nums), tous = solAgg("tous", nums);
+  h += '<div class="kpis hero">'
+    + kpi("Activité traitée tous canaux", show(tous.pris), "appels décrochés + tchats traités + mails", "primaire")
+    + kpi("dont téléphone (décrochés)", show(tel.pris), "", "")
+    + kpi("dont tchat (traités)", show(tch.pris), "", "")
+    + kpi("dont mail (traités)", show(mail.pris), "partiel", "")
+    + "</div>";
+  h += noteBox("« Tous canaux » agglomère les sollicitations <strong>prises en charge</strong> (traitées) de chaque canal. À ne pas confondre avec les sollicitations reçues, suivies dans l'onglet « Sollicitations ».");
+
+  /* répartition par canal */
+  h += '<div class="bloc"><h3 class="bloc-titre">Répartition des prises en charge par canal</h3>'
+    + htmlHBars([
+      { label: "Téléphone (décrochés)", v: tel.pris },
+      { label: "Tchat (traités)", v: tch.pris },
+      { label: "Mail (traités)", v: mail.pris }
+    ], BLEU) + "</div>";
+
+  /* tableau par mois (appels décrochés / tchats traités / mails / total) */
+  if (tc && tc.par_mois) {
+    h += '<div class="bloc"><h3 class="bloc-titre">Détail mensuel — activité traitée par canal</h3><div class="table-enveloppe"><table><thead><tr><th>Mois</th><th>Appels décrochés</th><th>Tchats traités</th><th>Mails</th><th>Total</th></tr></thead><tbody>';
+    tc.par_mois.forEach(d => {
+      const part = String(d.statut).includes("partiel");
+      h += '<tr><td class="cellule-mois">' + esc(libelleCourt(d.mois)) + (part ? ' <span class="mini-badge part">mails part.</span>' : "") + "</td>"
+        + td(d.appels_decroches) + td(d.tchats_traites) + td(d.mails) + "<td><strong>" + show(d.total) + "</strong></td></tr>";
+    });
+    if (tc.totaux_fev_mai) {
+      const t = tc.totaux_fev_mai;
+      h += '<tr class="ligne-total"><td>Total fév.–mai</td>' + td(t.appels_decroches) + td(t.tchats_traites) + td(t.mails) + "<td>" + show(t.total) + "</td></tr>";
+    }
+    h += "</tbody></table></div>" + noteBox(esc(tc.note)) + "</div>";
+    const items = tc.par_mois.map(d => ({ label: libelleCourt(d.mois).replace(" 2026", ""), v: d.total }));
+    const idxPart = tc.par_mois.findIndex(d => String(d.statut).includes("partiel"));
+    h += '<div class="bloc"><h3 class="bloc-titre">Total d\'activité traitée par mois</h3><div class="graph">' + svgBars(items, BLEU, idxPart) + "</div></div>";
+  }
+  return h;
+}
