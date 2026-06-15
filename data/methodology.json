@@ -69,9 +69,7 @@
     "sollicitations_recues": "appels reçus (total 3CX) + tchats reçus + mails reçus (+ autres canaux si disponibles)",
     "distinction_recues_traitees": "sollicitations reçues = activité entrante ; contacts traités = activité prise en charge (appels décrochés + tchats traités + mails)",
     "contacts_traites": "appels décrochés + tchats traités + mails traités",
-    "etp_mensuel": "temps dû initial du mois / (jours couverts × 5 h) — ETP théorique Octime",
-    "ratio_etp_mensuel": "volume du mois / ETP du même mois",
-    "ratio_etp_cumul": "somme des volumes / somme des ETP des mêmes mois"
+    "etp_mensuel": "temps dû initial du mois / (jours couverts × 5 h) — ETP théorique Octime ; ETP moyen = moyenne des ETP mensuels de la période"
   },
   "donnees_manquantes": [
     "Tchat janvier 2026 : absent de l'export.",
@@ -214,15 +212,12 @@
     "champ_retenu": "Temps dû initial",
     "formule": "total des heures de temps dû initial / (nombre de jours couverts × 5 heures)",
     "nature": "ETP théorique issu des cycles",
+    "usage": "Les ETP servent uniquement à contextualiser les ressources globales (synthèse et comparaison historique) ; ils ne constituent pas une mesure de productivité ni un indicateur individuel.",
     "limites": [
       "ne mesure pas la présence réelle",
       "ne mesure pas le temps exclusivement consacré à l'écoute",
       "ne constitue pas un indicateur individuel de performance"
     ],
-    "ratios": {
-      "mensuel": "volume du mois / ETP du même mois",
-      "cumul": "somme des volumes / somme des ETP mensuels des mêmes mois"
-    },
     "perimetre": "janvier 2025 à juin 2026 ; aucune valeur 2024 (n.d.) ; juin 2026 partiel (non extrapolé)",
     "ip_procureur": "procureur, CRIP, OFMIN et OCRTEH ne sont pas exclusifs : une même situation peut viser plusieurs autorités ; ne jamais les additionner en un total de situations uniques. « Situations IPS » reste l'indicateur global."
   }

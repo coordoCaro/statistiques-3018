@@ -176,22 +176,15 @@ function renderSynthese() {
   h += kpi("Sorties d'anonymat", show(a.sorties_anonymat && a.sorties_anonymat.total), (a.sorties_anonymat && a.sorties_anonymat.periode) || "", "primaire");
   h += "</div>";
 
-  if (a.volume_activite_traite) {
-    h += '<div class="kpis">' + kpi("Activité traitée tous canaux", show(a.volume_activite_traite.cumul_janv_mai), "janv.–mai", "accent") + "</div>";
+  /* Activité traitée + ETP moyen (janv.–mai 2026), présentés discrètement.
+     L'ETP est un simple indicateur de ressources : aucun ratio par ETP ici. */
+  const etpMoy = etpMoyenne(moisKeys(2026, [1, 2, 3, 4, 5]));
+  if (a.volume_activite_traite || etpMoy != null) {
+    h += '<div class="kpis">';
+    if (a.volume_activite_traite) h += kpi("Activité traitée tous canaux", show(a.volume_activite_traite.cumul_janv_mai), "janv.–mai", "accent");
+    if (etpMoy != null) h += '<div class="kpi"><p class="kpi-label">ETP moyen <span class="info" title="ETP théorique moyen issu des cycles Octime.">i</span></p><p class="kpi-valeur">' + show(etpMoy) + '</p><p class="kpi-sub">janv.–mai</p></div>';
+    h += "</div>";
   }
-
-  /* Mise en perspective ETP (janv.–mai 2026, mois complets) */
-  const keys = moisKeys(2026, [1, 2, 3, 4, 5]);
-  const etpMoy = etpMoyenne(keys), etpTot = etpSomme(keys);
-  const an = DATA.anonymity, ips = an && an.kpi_institutionnels_janv_mai ? an.kpi_institutionnels_janv_mai.ips_total : null;
-  const contacts = a.volume_activite_traite ? a.volume_activite_traite.cumul_janv_mai : null;
-  const sigTF = a.signalements_trusted_flagger ? a.signalements_trusted_flagger.total : null;
-  h += '<div class="bloc"><h3 class="bloc-titre">Mise en perspective — ETP <span class="info" title="ETP théorique (temps dû initial Octime), hors présence réelle. Ratios = volume janv.–mai / somme des ETP des mêmes mois.">i</span></h3><div class="kpis">'
-    + kpi("ETP moyen", show(etpMoy), "janv.–mai", "")
-    + kpi("Contacts traités / ETP-mois", show(ratioParEtp(contacts, etpTot)), "", "")
-    + kpi("Signalements plateformes / ETP-mois", show(ratioParEtp(sigTF, etpTot)), "", "")
-    + kpi("Situations IPS / ETP-mois", show(ratioParEtp(ips, etpTot)), "", "")
-    + "</div></div>";
 
   /* Janvier 2026 / janvier 2025 */
   const c = m && m.comparaison_historique_janvier;
@@ -263,10 +256,8 @@ function texteSynthese() {
   if (a.signalements_trusted_flagger) L.push("Signalements envoyés (" + a.signalements_trusted_flagger.periode + ") : " + show(a.signalements_trusted_flagger.total));
   if (a.sorties_anonymat) L.push("Sorties d'anonymat (" + a.sorties_anonymat.periode + ") : " + show(a.sorties_anonymat.total));
   if (a.volume_activite_traite) L.push("Activité traitée janv.-mai : " + show(a.volume_activite_traite.cumul_janv_mai));
-  const keys = moisKeys(2026, [1, 2, 3, 4, 5]);
-  const etpMoy = etpMoyenne(keys), etpTot = etpSomme(keys);
-  const an = DATA.anonymity, ips = an && an.kpi_institutionnels_janv_mai ? an.kpi_institutionnels_janv_mai.ips_total : null;
-  if (etpMoy != null) L.push("ETP moyen (janv.-mai) : " + show(etpMoy) + " — contacts traités / ETP-mois : " + show(ratioParEtp(a.volume_activite_traite ? a.volume_activite_traite.cumul_janv_mai : null, etpTot)) + ", signalements plateformes / ETP-mois : " + show(ratioParEtp(a.signalements_trusted_flagger ? a.signalements_trusted_flagger.total : null, etpTot)) + ", situations IPS / ETP-mois : " + show(ratioParEtp(ips, etpTot)));
+  const etpMoy = etpMoyenne(moisKeys(2026, [1, 2, 3, 4, 5]));
+  if (etpMoy != null) L.push("ETP moyen (janv.-mai) : " + show(etpMoy));
   const c = m && m.comparaison_historique_janvier;
   if (c) {
     L.push("Janvier 2026 : sollicitations " + show(c.sollicitations["2026"]) + ", contacts traités " + show(c.contacts_traites["2026"]) + ", taux de réponse global " + showPct(c.taux_reponse_pct["2026"]) + ".");
@@ -277,13 +268,87 @@ function texteSynthese() {
 /* ---------------- COMPARAISON HISTORIQUE ---------------- */
 let HIST_IND = "sollicitations";
 let PROT_IND = "signalements_plateformes";
-const HIST_LABELS = { sollicitations: "Sollicitations reçues", contacts_traites: "Contacts traités", taux_reponse_global_pct: "Taux de réponse global", etp: "ETP", contacts_par_etp: "Contacts / ETP-mois", signalements_par_etp: "Signalements plateformes / ETP-mois", crip_ip_sp_par_etp: "CRIP / IP / SP / ETP-mois" };
-const HIST_ETP = ["etp", "contacts_par_etp", "signalements_par_etp", "crip_ip_sp_par_etp"];
+const HIST_LABELS = { sollicitations: "Sollicitations reçues", contacts_traites: "Contacts traités", taux_reponse_global_pct: "Taux de réponse global" };
+
+/* Cumul janvier-mai (indices 0 à 4) d'une série {2024:[12], 2025:[12], 2026:[12]}.
+   Renvoie null pour une année si une valeur indispensable manque (jamais 0). */
+function histCumulJM(serie) {
+  const out = {};
+  ["2024", "2025", "2026"].forEach(y => {
+    const arr = (serie && serie[y]) ? serie[y].slice(0, 5) : null;
+    out[y] = (arr && arr.length === 5 && arr.every(v => v != null)) ? arr.reduce((a, b) => a + b, 0) : null;
+  });
+  return out;
+}
+
+/* Tableau « Vue d'ensemble — janvier à mai » : indicateurs côte à côte sur une
+   période strictement comparable (1er janv. → 31 mai de chaque année).
+   Aucun total général, aucune somme entre indicateurs de nature différente. */
+function histVueEnsemble() {
+  const hd = DATA.historical;
+  if (!hd) return "";
+  const S = hd.series || {}, P = (hd.protection && hd.protection.series) || {};
+
+  const sol = histCumulJM(S.sollicitations);
+  const con = histCumulJM(S.contacts_traites);
+  const sig = histCumulJM(P.signalements_plateformes);
+  const men = histCumulJM(P.men);
+  const pha = histCumulJM(P.pharos);
+  const crip = histCumulJM(P.crip_ip_sp_regroupes);
+
+  /* Taux de réponse global = cumul contacts traités / cumul sollicitations × 100
+     (recalculé sur les cumuls, jamais une moyenne des taux mensuels). */
+  const taux = {};
+  ["2024", "2025", "2026"].forEach(y => {
+    taux[y] = (con[y] != null && sol[y] != null && sol[y] > 0) ? Math.round(con[y] / sol[y] * 1000) / 10 : null;
+  });
+
+  /* ETP moyen janvier-mai : n.d. en 2024 (etp.json commence en 2025). */
+  const etp = {
+    "2024": null,
+    "2025": etpMoyenne(moisKeys(2025, [1, 2, 3, 4, 5])),
+    "2026": etpMoyenne(moisKeys(2026, [1, 2, 3, 4, 5])),
+  };
+
+  function evoCell(c, unite) {
+    if (c["2026"] == null || c["2025"] == null || c["2025"] === 0) return '<td><span class="nd">n.d.</span></td>';
+    return "<td>" + evoBadge(c["2026"], c["2025"], unite || "") + "</td>";
+  }
+  function rowVol(label, c) {
+    return '<tr><td class="vue-ind">' + esc(label) + "</td>" + td(c["2024"]) + td(c["2025"]) + td(c["2026"]) + evoCell(c, "") + "</tr>";
+  }
+  function rowTaux(label, c) {
+    return '<tr><td class="vue-ind">' + esc(label) + "</td>" + td(c["2024"], true) + td(c["2025"], true) + td(c["2026"], true) + evoCell(c, "pt") + "</tr>";
+  }
+  function sousTitre(t) { return '<tr class="vue-groupe"><td colspan="5">' + esc(t) + "</td></tr>"; }
+
+  let h = '<div class="bloc"><h3 class="bloc-titre">Vue d\'ensemble — janvier à mai</h3>';
+  h += '<div class="table-enveloppe"><table class="vue-ensemble"><thead><tr>'
+    + "<th>Indicateur</th><th>2024</th><th>2025</th><th>2026</th><th>Évolution 2026 / 2025</th></tr></thead><tbody>";
+  h += sousTitre("Ressources");
+  h += rowVol("ETP moyen", etp);
+  h += sousTitre("Contacts");
+  h += rowVol("Sollicitations reçues", sol);
+  h += rowVol("Contacts traités", con);
+  h += rowTaux("Taux de réponse global", taux);
+  h += sousTitre("Actions de protection");
+  h += rowVol("Signalements plateformes", sig);
+  h += rowVol("Remontées MEN", men);
+  h += rowVol("PHAROS", pha);
+  h += rowVol("CRIP / IP / signalements au procureur regroupés", crip);
+  h += "</tbody></table></div>";
+  h += noteBox("Ces indicateurs décrivent des activités de nature et de durée différentes. Ils ne doivent pas être additionnés.");
+  h += "</div>";
+  return h;
+}
 
 function renderHistorique() {
   const hd = DATA.historical;
   if (!hd) return '<p class="intro">Données indisponibles.</p>';
   let h = '<p class="intro">' + esc(hd._meta.avertissement) + "</p>";
+
+  /* Tableau transversal janvier-mai, avant les graphiques mensuels */
+  h += histVueEnsemble();
 
   /* Bloc 1 — activité */
   h += '<div class="bloc"><h3 class="bloc-titre">Activité (globale et traitée)</h3>';
@@ -343,31 +408,6 @@ function statutProtection(st, v26) {
 function remplirHistorique() {
   const hd = DATA.historical, zone = document.getElementById("hist-zone");
   if (!zone) return;
-
-  /* --- indicateurs ETP et ratios (séries calculées) --- */
-  if (HIST_ETP.indexOf(HIST_IND) >= 0) {
-    let series, note;
-    if (HIST_IND === "etp") {
-      series = { "2024": new Array(12).fill(null), "2025": etpSerieAnnee(2025), "2026": etpSerieAnnee(2026) };
-      note = "ETP théorique (temps dû initial Octime), hors présence réelle. Pas de données 2024. Juin 2026 partiel.";
-    } else if (HIST_IND === "contacts_par_etp") {
-      series = { "2024": new Array(12).fill(null), "2025": etpRatioSerie(hd.series.contacts_traites["2025"], 2025), "2026": etpRatioSerie(hd.series.contacts_traites["2026"], 2026) };
-      note = "Contacts traités ÷ ETP du même mois. Calculé seulement si les deux valeurs existent.";
-    } else if (HIST_IND === "signalements_par_etp") {
-      const sp = hd.protection.series.signalements_plateformes;
-      series = { "2024": new Array(12).fill(null), "2025": etpRatioSerie(sp["2025"], 2025), "2026": etpRatioSerie(sp["2026"], 2026) };
-      note = "Signalements plateformes ÷ ETP du même mois.";
-    } else {
-      const cr = hd.protection.series.crip_ip_sp_regroupes;
-      series = { "2024": new Array(12).fill(null), "2025": etpRatioSerie(cr["2025"], 2025), "2026": etpRatioSerie(cr["2026"], 2026) };
-      note = "CRIP / IP / SP regroupés ÷ ETP du même mois. Rubrique regroupée pour rester comparable à 2025.";
-    }
-    /* statut basé sur le mois : juin 2026 partiel */
-    const statut2026 = hd.mois_labels.map((l, i) => (i === 5 ? "partiel" : "complet"));
-    const infoEtp = (st, v26) => ({ comparable: v26 != null && st !== "partiel", badge: st === "partiel" ? ' <span class="mini-badge part">partiel</span>' : "" });
-    zone.innerHTML = blocComparatif(hd.mois_labels, series, statut2026, "", infoEtp, note);
-    return;
-  }
 
   const unite = HIST_IND === "taux_reponse_global_pct" ? "pct" : "";
   function info(st, v26) {
@@ -718,21 +758,6 @@ function renderAnonymat() {
     + "</div>";
   h += noteBox("Une situation peut être transmise à plusieurs autorités.");
 
-  /* Bloc compact : ETP, situations IPS, IP transmises, procureur (mensuel) */
-  const sdm = a.sous_destinataires_ips_mensuel && a.sous_destinataires_ips_mensuel.par_destinataire;
-  if (sdm) {
-    const moisIPS = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05"];
-    const crip = sdm.CRIP ? sdm.CRIP.par_mois : {}, proc = sdm.Procureur ? sdm.Procureur.par_mois : {};
-    h += '<div class="bloc"><h3 class="bloc-titre">ETP et IPS par mois <span class="info" title="Situations IPS non ventilées par mois dans la source : seul le cumul janv.–mai est disponible. Une situation peut viser plusieurs autorités.">i</span></h3>'
-      + '<div class="table-enveloppe"><table><thead><tr><th>Mois</th><th>ETP</th><th>Situations IPS</th><th>IP transmises</th><th>Signalements au procureur</th></tr></thead><tbody>';
-    moisIPS.forEach(mk => {
-      h += '<tr><td class="cellule-mois">' + esc(libelleCourt(mk)) + "</td>" + td(etpDe(mk))
-        + '<td class="nd">n.d.</td>' + td(crip[mk]) + td(proc[mk]) + "</tr>";
-    });
-    h += '<tr class="ligne-total"><td>Cumul janv.–mai</td>' + td(etpSomme(moisIPS)) + td(k.ips_total) + td(k.crip) + td(k.procureur) + "</tr>";
-    h += "</tbody></table></div>" + noteBox("Situations IPS : cumul uniquement (non ventilé par mois dans la source). IP transmises = CRIP. CRIP et procureur peuvent concerner une même situation.") + "</div>";
-  }
-
   if (a.par_mois_2026) {
     const idxPart = a.par_mois_2026.findIndex(d => d.statut !== "consolidé");
     h += '<div class="bloc"><h3 class="bloc-titre">Évolution mensuelle 2026</h3><div class="graph">'
@@ -831,8 +856,7 @@ function renderMethodologie() {
       + '<div class="k">Champ retenu</div><div class="v" style="text-align:left;font-weight:500">' + esc(e.champ_retenu) + "</div>"
       + '<div class="k">Formule</div><div class="v" style="text-align:left;font-weight:500">' + esc(e.formule) + "</div>"
       + '<div class="k">Nature</div><div class="v" style="text-align:left;font-weight:500">' + esc(e.nature) + "</div>"
-      + '<div class="k">Ratio mensuel</div><div class="v" style="text-align:left;font-weight:500">' + esc(e.ratios.mensuel) + "</div>"
-      + '<div class="k">Ratio cumul</div><div class="v" style="text-align:left;font-weight:500">' + esc(e.ratios.cumul) + "</div>"
+      + (e.usage ? '<div class="k">Usage</div><div class="v" style="text-align:left;font-weight:500">' + esc(e.usage) + "</div>" : "")
       + '<div class="k">Périmètre</div><div class="v" style="text-align:left;font-weight:500">' + esc(e.perimetre || "") + "</div>"
       + "</div>";
     if (e.limites) h += '<ul class="liste-propre">' + e.limites.map(x => "<li>" + esc(x) + "</li>").join("") + "</ul>";
@@ -877,8 +901,6 @@ function brancherInteractions(id) {
       if (el) el.addEventListener("change", () => { SOL_F[key] = el.value; solFill(); });
     };
     wire("sol-canal", "canal"); wire("sol-comp", "comp");
-    const etpSel = document.getElementById("sol-etp");
-    if (etpSel) etpSel.addEventListener("change", () => { SOL_F.etp = (etpSel.value === "oui"); solFill(); });
     const dde = document.getElementById("sol-de"), da = document.getElementById("sol-a");
     if (dde) dde.addEventListener("change", () => { SOL_F.persoDe = +dde.value; if (SOL_F.periode === "perso") solFill(); });
     if (da) da.addEventListener("change", () => { SOL_F.persoA = +da.value; if (SOL_F.periode === "perso") solFill(); });
@@ -1138,7 +1160,7 @@ function kpiCmp(label, cur, comp, sub, isPct, tone) {
 /* ================================================================
    ONGLET « SOLLICITATIONS »  (ex activité mensuelle + trimestrielle)
    ================================================================ */
-let SOL_F = { periode: "annee", canal: "tous", comp: "aucune", persoDe: 1, persoA: 5, etp: false };
+let SOL_F = { periode: "annee", canal: "tous", comp: "aucune", persoDe: 1, persoA: 5 };
 
 const SOL_CANAUX = [
   { v: "tous", label: "Tous les canaux" },
@@ -1176,7 +1198,6 @@ function renderSollicitations() {
     + '<option value="prec">Période précédente</option>'
     + '<option value="n1">Même période 2025</option>'
     + "</select></label>"
-    + '<label class="filtre-check">Ratios ETP<select id="sol-etp"><option value="non">Masqués</option><option value="oui">Affichés</option></select></label>'
     + '<span id="sol-perso" class="sol-perso" hidden>'
     + '<label>De<select id="sol-de">' + solOptionsMois(1) + "</select></label>"
     + '<label>À<select id="sol-a">' + solOptionsMois(5) + "</select></label>"
@@ -1349,28 +1370,20 @@ function solKV(label, v, isPct) {
    auparavant masqués (abandonnés, reçues entrantes, mails). */
 function solTableauMensuelDetaille() {
   const moisAll = solMois();
-  const etpOn = SOL_F.etp;
-  const enTeteEtp = etpOn ? "<th>ETP</th><th>Contacts / ETP</th><th>Signal. / ETP</th>" : "";
   let h = '<div class="bloc"><h3 class="bloc-titre">Tableau détaillé mensuel — valeurs sources</h3>'
     + '<div class="table-enveloppe"><table><thead><tr>'
     + "<th>Mois</th><th>Sollic. reçues</th><th>Appels reçus</th><th>Décrochés</th><th>Appels aband.</th><th>Taux rép.</th>"
     + "<th>Tchats reçus</th><th>Tchats traités</th><th>Taux prise</th><th>Mails</th>"
-    + "<th>Activité traitée<br>(tous canaux)</th><th>Signal. TF</th><th>Sorties anon.</th>" + enTeteEtp
+    + "<th>Activité traitée<br>(tous canaux)</th><th>Signal. TF</th><th>Sorties anon.</th>"
     + "</tr></thead><tbody>";
   moisAll.forEach(mo => {
     const d = mo.row;
-    let etpCols = "";
-    if (etpOn) {
-      const e = etpDe(mo.key);
-      etpCols = td(e) + td(ratioParEtp(d.volume_activite_traite, e)) + td(ratioParEtp(d.signalements_trusted_flagger, e));
-    }
     h += '<tr><td class="cellule-mois">' + esc(d.libelle) + "</td>"
       + td(d.sollicitations_entrantes) + td(d.appels_recus) + td(d.appels_decroches) + td(d.appels_abandonnes) + td(d.taux_reponse_appels_pct, true)
       + td(d.tchats_recus) + td(d.tchats_traites) + td(d.taux_prise_tchat_pct, true) + td(mo.mails)
-      + td(d.volume_activite_traite) + td(d.signalements_trusted_flagger) + td(d.sorties_anonymat) + etpCols + "</tr>";
+      + td(d.volume_activite_traite) + td(d.signalements_trusted_flagger) + td(d.sorties_anonymat) + "</tr>";
   });
   h += "</tbody></table></div>";
-  if (etpOn) h += noteBox("Contacts / ETP = activité traitée du mois ÷ ETP du même mois. Signal. / ETP = signalements plateformes ÷ ETP. ETP théorique (Octime), hors présence réelle.");
   h += "</div>";
   return h;
 }
@@ -1631,13 +1644,13 @@ function perfTous(F) {
 }
 
 /* =================================================================
-   MODULE ETP — mise en perspective des volumes par les ETP théoriques
+   MODULE ETP — contextualisation des ressources globales
    -----------------------------------------------------------------
    ETP = équivalent temps plein THÉORIQUE (temps dû initial Octime).
    Ne mesure ni la présence réelle, ni une quelconque performance.
    Aucune valeur 2024 (=> n.d.). Juin 2026 partiel (jamais extrapolé).
-   Règle des ratios : numérateur et dénominateur portent EXACTEMENT
-   sur les mêmes mois. Donnée absente => null/n.d., jamais zéro.
+   Utilisé uniquement comme indicateur de ressources dans la Synthèse
+   et la Comparaison historique (ETP moyen). Aucun ratio par ETP.
    ================================================================= */
 
 /* index "2026-01" -> {etp, statut} */
@@ -1662,25 +1675,5 @@ function etpMoyenne(keys, inclurePartiels) {
   if (!ks.length) return null;
   return Math.round(etpSomme(ks) / ks.length * 100) / 100;
 }
-/* ratio volume / ETP, à 1 décimale ; null si une borne manque */
-function ratioParEtp(volume, etp) {
-  return (volume != null && etp != null && etp > 0) ? Math.round(volume / etp * 10) / 10 : null;
-}
 /* clés mensuelles d'une année (1..12) -> ["2026-01",...] limité aux mois fournis */
 function moisKeys(annee, nums) { return nums.map(n => annee + "-" + String(n).padStart(2, "0")); }
-
-/* série ETP d'une année sur 12 mois (null si absent) */
-function etpSerieAnnee(annee) {
-  const out = new Array(12).fill(null);
-  const e = DATA.etp;
-  if (e && e.par_mois) e.par_mois.forEach(d => {
-    const p = d.mois.split("-");
-    if (p[0] === String(annee)) out[+p[1] - 1] = d.etp;
-  });
-  return out;
-}
-/* série de ratio (numérateur 12 mois / ETP même année même mois) */
-function etpRatioSerie(numArr, annee) {
-  const etp = etpSerieAnnee(annee);
-  return (numArr || []).map((v, i) => ratioParEtp(v, etp[i]));
-}

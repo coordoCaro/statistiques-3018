@@ -282,6 +282,9 @@ tbody tr:hover { background: #f4f6ff; }
 .sous-bloc-titre { font-size: 14px; font-weight: 700; color: var(--bleu); margin: 0 0 8px; }
 tr.hors-periode { opacity: 0.45; }
 
-/* ----- ETP : pictogramme d'info discret + filtre ----- */
+/* ----- Pictogramme d'info discret ----- */
 .info { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 4px; border-radius: 50%; background: var(--fond-doux); border: 1px solid var(--bordure); color: var(--gris); font-size: 11px; font-weight: 700; font-style: normal; cursor: help; vertical-align: middle; }
-.filtre-check select { max-width: 140px; }
+
+/* ----- Tableau « Vue d'ensemble — janvier à mai » ----- */
+.vue-ensemble td.vue-ind { text-align: left; font-weight: 500; }
+.vue-ensemble tr.vue-groupe td { background: var(--fond-doux); color: var(--bleu); font-weight: 700; letter-spacing: 0.02em; }

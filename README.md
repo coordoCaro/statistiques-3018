@@ -3,8 +3,8 @@
 Application web pour consulter les statistiques d'activité du 3018 : synthèse,
 comparaison historique mensuelle (2024 / 2025 / 2026), sollicitations,
 performance des canaux (téléphone, tchat, mail), signalements Trusted Flagger,
-sorties d'anonymat, données BIK / Insafe et méthodologie. Les volumes peuvent
-être mis en perspective par les ETP théoriques.
+sorties d'anonymat, données BIK / Insafe et méthodologie. Les ETP théoriques
+contextualisent les ressources dans la synthèse et la comparaison historique.
 
 Elle est **statique** : pas de serveur, pas de base de données. Elle lit
 simplement des fichiers `.json` rangés dans `data/`. Aucune donnée personnelle
@@ -46,10 +46,10 @@ statistiques-3018/
 |-------------------------------|-----------------------------------------------------|
 | Synthèse                      | `annual_to_date.json`, `activity_monthly.json`, `anonymity_outputs.json`, `etp.json` |
 | Comparaison historique        | `historical_monthly.json`, `etp.json`               |
-| Sollicitations                | `activity_monthly.json`, `activity_quarterly.json`, `historical_monthly.json`, `etp.json` |
+| Sollicitations                | `activity_monthly.json`, `activity_quarterly.json`, `historical_monthly.json` |
 | Performance des canaux        | `phone.json`, `chat.json`, `activity_monthly.json`  |
 | Signalements Trusted Flagger  | `trusted_flagger_2026.json` (tableau de bord dynamique) ; `trusted_flagger.json` (synthèse) |
-| Sorties d'anonymat            | `anonymity_outputs.json`, `etp.json`                |
+| Sorties d'anonymat            | `anonymity_outputs.json`                            |
 | Données BIK / Insafe          | `bik.json`                                          |
 | Méthodologie                  | `methodology.json`, `etp.json`                      |
 
@@ -69,13 +69,12 @@ statistiques-3018/
   indicateur individuel.
 - **Période :** janvier 2025 → juin 2026. **Aucune valeur 2024** (affichée
   `n.d.`). **Juin 2026 partiel** (au 14/06) : jamais extrapolé en mois complet.
-- **Où les ETP apparaissent :** Synthèse (ETP moyen + ratios par ETP-mois),
-  Comparaison historique (ETP et ratios sélectionnables), Sollicitations (option
-  « Ratios ETP » dans le tableau mensuel), Sorties d'anonymat (bloc ETP / IPS /
-  IP transmises / procureur).
-- **Ratios :** mensuel = volume du mois ÷ ETP du même mois ; cumul = somme des
-  volumes ÷ somme des ETP des mêmes mois. Numérateur et dénominateur portent
-  toujours sur les mêmes mois. Une donnée absente reste `n.d.`, jamais 0.
+- **Où les ETP apparaissent :** uniquement dans **Synthèse** (carte « ETP moyen »
+  janvier-mai) et **Comparaison historique** (ligne « ETP moyen » du tableau
+  « Vue d'ensemble — janvier à mai »). Ils n'apparaissent dans aucun autre onglet.
+- **Usage :** les ETP servent **uniquement à contextualiser les ressources
+  globales**. Ce **n'est pas** une mesure de productivité : aucun ratio par ETP
+  n'est affiché dans l'interface. Une donnée absente reste `n.d.`, jamais 0.
 - **Mise à jour mensuelle :** ajouter une ligne dans `par_mois` de `etp.json`
   (`{ "mois": "AAAA-MM", "etp": 0.00, "statut": "complet" }`), puis remplacer le
   fichier dans `data/`. Marquer un mois en cours avec un `statut` « partiel… ».
