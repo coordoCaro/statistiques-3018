@@ -1,9 +1,10 @@
-# Reporting interne 3018 — tableau de bord (webapp statique)
+# 3018 — statistiques d'activité (webapp statique)
 
-Application web pour consulter les statistiques d'activité du 3018 : synthèse
-direction, comparaison historique mensuelle (2024 / 2025 / 2026), activité
-mensuelle et trimestrielle, téléphone, tchat, signalements Trusted Flagger,
-sorties d'anonymat, données BIK / Insafe et méthodologie.
+Application web pour consulter les statistiques d'activité du 3018 : synthèse,
+comparaison historique mensuelle (2024 / 2025 / 2026), sollicitations,
+performance des canaux (téléphone, tchat, mail), signalements Trusted Flagger,
+sorties d'anonymat, données BIK / Insafe et méthodologie. Les volumes peuvent
+être mis en perspective par les ETP théoriques.
 
 Elle est **statique** : pas de serveur, pas de base de données. Elle lit
 simplement des fichiers `.json` rangés dans `data/`. Aucune donnée personnelle
@@ -30,11 +31,12 @@ statistiques-3018/
     ├── trusted_flagger_2026.json
     ├── anonymity_outputs.json
     ├── bik.json
-    └── methodology.json
+    ├── methodology.json
+    └── etp.json
 ```
 
 - **À la racine du dépôt :** `index.html`, `style.css`, `app.js`, `README.md`.
-- **Dans `data/` :** les 10 fichiers `.json`.
+- **Dans `data/` :** les 12 fichiers `.json`.
 
 ---
 
@@ -42,16 +44,43 @@ statistiques-3018/
 
 | Section de l'application      | Fichier(s) JSON utilisé(s)                          |
 |-------------------------------|-----------------------------------------------------|
-| Synthèse direction            | `annual_to_date.json`, `activity_monthly.json`, et les compteurs de `phone/chat/trusted_flagger/anonymity_outputs` |
-| Comparaison historique        | `historical_monthly.json`                           |
-| Activité mensuelle            | `activity_monthly.json`                             |
-| Activité trimestrielle        | `activity_quarterly.json`                           |
-| Téléphone                     | `phone.json`                                        |
-| Tchat                         | `chat.json`                                         |
+| Synthèse                      | `annual_to_date.json`, `activity_monthly.json`, `anonymity_outputs.json`, `etp.json` |
+| Comparaison historique        | `historical_monthly.json`, `etp.json`               |
+| Sollicitations                | `activity_monthly.json`, `activity_quarterly.json`, `historical_monthly.json`, `etp.json` |
+| Performance des canaux        | `phone.json`, `chat.json`, `activity_monthly.json`  |
 | Signalements Trusted Flagger  | `trusted_flagger_2026.json` (tableau de bord dynamique) ; `trusted_flagger.json` (synthèse) |
-| Sorties d'anonymat            | `anonymity_outputs.json`                            |
+| Sorties d'anonymat            | `anonymity_outputs.json`, `etp.json`                |
 | Données BIK / Insafe          | `bik.json`                                          |
-| Méthodologie et traçabilité   | `methodology.json`                                  |
+| Méthodologie                  | `methodology.json`, `etp.json`                      |
+
+> Les anciens onglets « Activité mensuelle », « Activité trimestrielle »,
+> « Téléphone » et « Tchat » sont désormais regroupés dans « Sollicitations »
+> et « Performance des canaux » (aucune donnée perdue).
+
+---
+
+## 2 bis. Les ETP (`data/etp.json`)
+
+- **Source :** Octime — édition « Temps de base », champ **Temps dû initial**.
+- **Méthode :** ETP mensuel = total des heures de temps dû initial ÷ (nombre de
+  jours couverts × 5 heures).
+- **Nature :** ETP **théorique** issu des cycles de planning. Ce **n'est pas**
+  une mesure de présence réelle, ni de productivité ou d'efficacité, ni un
+  indicateur individuel.
+- **Période :** janvier 2025 → juin 2026. **Aucune valeur 2024** (affichée
+  `n.d.`). **Juin 2026 partiel** (au 14/06) : jamais extrapolé en mois complet.
+- **Où les ETP apparaissent :** Synthèse (ETP moyen + ratios par ETP-mois),
+  Comparaison historique (ETP et ratios sélectionnables), Sollicitations (option
+  « Ratios ETP » dans le tableau mensuel), Sorties d'anonymat (bloc ETP / IPS /
+  IP transmises / procureur).
+- **Ratios :** mensuel = volume du mois ÷ ETP du même mois ; cumul = somme des
+  volumes ÷ somme des ETP des mêmes mois. Numérateur et dénominateur portent
+  toujours sur les mêmes mois. Une donnée absente reste `n.d.`, jamais 0.
+- **Mise à jour mensuelle :** ajouter une ligne dans `par_mois` de `etp.json`
+  (`{ "mois": "AAAA-MM", "etp": 0.00, "statut": "complet" }`), puis remplacer le
+  fichier dans `data/`. Marquer un mois en cours avec un `statut` « partiel… ».
+
+---
 
 ---
 
@@ -152,14 +181,14 @@ Vérifiez que les chiffres se mettent à jour et que les onglets s'affichent.
   (appels + tchats + mails) ; les mails (915 sur fév.-mai) ne sont plus comptés
   comme absents. Les mois issus de l'export Salesforce Case portent l'étiquette
   « SF » et le mois partiel l'étiquette « partiel ».
-- La synthèse direction propose un bouton **« Copier les chiffres clés »** pour
+- La synthèse propose un bouton **« Copier les chiffres clés »** pour
   réutiliser les indicateurs dans un mail ou une présentation.
 
 ---
 
 ## 7. État des données (juin 2026)
 
-Les 10 fichiers JSON sont renseignés. Limites connues, détaillées dans l'onglet
+Les 12 fichiers JSON sont renseignés. Limites connues, détaillées dans l'onglet
 **Méthodologie** :
 
 - **Historique — activité :** 2024 et 2025 consolidés (tableau d'activité) ;

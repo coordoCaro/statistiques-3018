@@ -281,3 +281,7 @@ tbody tr:hover { background: #f4f6ff; }
 .sous-bloc { margin-top: 14px; padding: 12px 14px; background: var(--fond-doux); border: 1px solid var(--bordure); border-radius: 8px; }
 .sous-bloc-titre { font-size: 14px; font-weight: 700; color: var(--bleu); margin: 0 0 8px; }
 tr.hors-periode { opacity: 0.45; }
+
+/* ----- ETP : pictogramme d'info discret + filtre ----- */
+.info { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-left: 4px; border-radius: 50%; background: var(--fond-doux); border: 1px solid var(--bordure); color: var(--gris); font-size: 11px; font-weight: 700; font-style: normal; cursor: help; vertical-align: middle; }
+.filtre-check select { max-width: 140px; }

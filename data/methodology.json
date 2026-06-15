@@ -48,6 +48,12 @@
       "usage": "Activité traitée tous canaux (appels + tchats + mails) — niveau dossier",
       "periode": "01/02 au 26/05/2026 (mai partiel)",
       "limite": "Données nominatives par écoutant NON exploitées (suivi individuel exclu). Seuls les totaux mensuels par canal sont utilisés. Mesure niveau dossier, distincte de 3CX (téléphonie) et de l'export tchat Conversation Entries."
+    },
+    {
+      "fichier": "etp.json (source : Octime — Temps de base)",
+      "usage": "Mise en perspective des volumes par les ETP théoriques (Synthèse, Comparaison historique, Sollicitations, Sorties d'anonymat)",
+      "periode": "janvier 2025 à juin 2026 (juin partiel) ; pas de 2024",
+      "limite": "ETP théorique (temps dû initial), pas la présence réelle ; ne mesure aucune performance individuelle."
     }
   ],
   "regles_de_calcul": {
@@ -62,7 +68,10 @@
     "activite_traitee_tous_canaux": "appels décrochés (3CX) + tchats traités (export tchat) + mails (export SF Case) ; pour février-mai 2026. Janvier 2026 via le tableau d'activité mensuelle.",
     "sollicitations_recues": "appels reçus (total 3CX) + tchats reçus + mails reçus (+ autres canaux si disponibles)",
     "distinction_recues_traitees": "sollicitations reçues = activité entrante ; contacts traités = activité prise en charge (appels décrochés + tchats traités + mails)",
-    "contacts_traites": "appels décrochés + tchats traités + mails traités"
+    "contacts_traites": "appels décrochés + tchats traités + mails traités",
+    "etp_mensuel": "temps dû initial du mois / (jours couverts × 5 h) — ETP théorique Octime",
+    "ratio_etp_mensuel": "volume du mois / ETP du même mois",
+    "ratio_etp_cumul": "somme des volumes / somme des ETP des mêmes mois"
   },
   "donnees_manquantes": [
     "Tchat janvier 2026 : absent de l'export.",
@@ -146,7 +155,8 @@
     "anonymity_outputs.json",
     "bik.json",
     "methodology.json",
-    "trusted_flagger_2026.json"
+    "trusted_flagger_2026.json",
+    "etp.json"
   ],
   "lignage_donnees": {
     "2024_2025": "tableau d'activité mensuelle consolidé (activité globale, activité traitée et indicateurs de protection)",
@@ -198,5 +208,22 @@
     "delais": "date de réponse (Q) − date d'envoi (K), en jours, uniquement si les deux dates sont valides et le délai ≥ 0 ; le nombre de lignes utilisées est affiché",
     "division_par_zero": "un taux non calculable est affiché « N/A » (jamais une erreur)",
     "exclus": "pas d'analyse par juriste, pas de classement ni de performance individuelle, pas de CRM, pas de données antérieures à 2026"
+  },
+  "etp": {
+    "source": "Octime — édition Temps de base",
+    "champ_retenu": "Temps dû initial",
+    "formule": "total des heures de temps dû initial / (nombre de jours couverts × 5 heures)",
+    "nature": "ETP théorique issu des cycles",
+    "limites": [
+      "ne mesure pas la présence réelle",
+      "ne mesure pas le temps exclusivement consacré à l'écoute",
+      "ne constitue pas un indicateur individuel de performance"
+    ],
+    "ratios": {
+      "mensuel": "volume du mois / ETP du même mois",
+      "cumul": "somme des volumes / somme des ETP mensuels des mêmes mois"
+    },
+    "perimetre": "janvier 2025 à juin 2026 ; aucune valeur 2024 (n.d.) ; juin 2026 partiel (non extrapolé)",
+    "ip_procureur": "procureur, CRIP, OFMIN et OCRTEH ne sont pas exclusifs : une même situation peut viser plusieurs autorités ; ne jamais les additionner en un total de situations uniques. « Situations IPS » reste l'indicateur global."
   }
 }
