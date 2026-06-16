@@ -288,9 +288,3 @@ tr.hors-periode { opacity: 0.45; }
 /* ----- Tableau « Vue d'ensemble — janvier à mai » ----- */
 .vue-ensemble td.vue-ind { text-align: left; font-weight: 500; }
 .vue-ensemble tr.vue-groupe td { background: var(--fond-doux); color: var(--bleu); font-weight: 700; letter-spacing: 0.02em; }
-
-/* ---------- Onglet Charge de travail : sélecteur de période ---------- */
-.filtre-label { font-size: 12.5px; font-weight: 600; color: var(--gris); margin-right: 8px; }
-.filtre-select { font: inherit; font-size: 14px; font-weight: 500; color: var(--encre); padding: 9px 10px; border: 1px solid var(--bordure); border-radius: 6px; background: var(--blanc); }
-.filtre-select:focus-visible { outline: 2px solid var(--bleu); outline-offset: 1px; }
-table.compact th, table.compact td { padding: 7px 8px; font-size: 12.5px; }
