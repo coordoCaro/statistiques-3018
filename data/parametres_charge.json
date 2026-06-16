@@ -1,0 +1,84 @@
+{
+  "_meta": {
+    "titre": "Paramètres de la charge de travail théorique 3018",
+    "role": "Fichier de configuration centralisé. Modifier ici les temps standards et la base de calcul des ETP ; aucune autre intervention dans le code n'est nécessaire.",
+    "nature": "Tous les temps ci-dessous sont des temps THÉORIQUES ESTIMÉS, et non des durées réellement chronométrées (sauf la durée réelle des appels, issue des exports 3CX).",
+    "avertissement": "La charge calculée est une estimation PARTIELLE de la charge réelle du service. De nombreuses activités ne sont pas converties en temps (voir liste activites_hors_calcul)."
+  },
+
+  "temps_standards_min": {
+    "appel_saisie": 10,
+    "tchat_echange": 20,
+    "tchat_saisie": 10,
+    "mail": 15,
+    "men": 20,
+    "plateformes": 20,
+    "procureur_article40": 120,
+    "ip_crip": 105,
+    "signal_sports": 20,
+    "pharos": 30
+  },
+
+  "libelles": {
+    "appel_saisie": "Rédaction, qualification et saisie par appel décroché",
+    "tchat_echange": "Échange estimé par tchat traité",
+    "tchat_saisie": "Rédaction et saisie par tchat traité",
+    "mail": "Traitement complet par mail (lecture, analyse, réponse, saisie)",
+    "men": "Signalement MEN (Éducation nationale / Agriculture)",
+    "plateformes": "Signalement aux plateformes (Trusted Flagger)",
+    "procureur_article40": "Procureur \u2013 article 40",
+    "ip_crip": "Information préoccupante / CRIP",
+    "signal_sports": "Signal-Sports",
+    "pharos": "Pharos"
+  },
+
+  "nature_donnee": {
+    "appel_duree": "réelle (exports 3CX)",
+    "appel_saisie": "estimée (convention)",
+    "tchat_echange": "estimée (convention)",
+    "tchat_saisie": "estimée (convention)",
+    "mail": "estimée (convention)",
+    "men": "réelle (nombre) × temps estimé",
+    "plateformes": "réelle (nombre) × temps estimé",
+    "procureur_article40": "réelle (nombre) × temps estimé",
+    "ip_crip": "réelle (nombre) × temps estimé",
+    "signal_sports": "non disponible (n.d.)",
+    "pharos": "réelle (nombre) × temps estimé"
+  },
+
+  "etp": {
+    "heures_par_etp_mois": 151.67,
+    "heures_par_etp_trimestre": 455.01,
+    "heures_par_etp_annee": 1820,
+    "journee_heures": 7,
+    "base": "1 ETP = 35 heures par semaine = 5 jours × 7 heures. 35 × 52 ÷ 12 = 151,67 h/mois.",
+    "methode_periode": "Heures disponibles d'une période = somme, mois par mois, de (ETP du mois × 151,67 h). Les capacités mensuelles sont additionnées, jamais moyennées de façon arrondie.",
+    "qualificatif": "capacité contractuelle théorique",
+    "note": "Cette capacité ne déduit ni les congés, ni les absences, ni les arrêts, ni les formations, ni les autres indisponibilités. La source ETP (etp.json) est un ETP théorique issu des cycles Octime (temps dû initial), et non un temps de présence réelle."
+  },
+
+  "mentions_methodologiques": {
+    "appels": "Chaque appel décroché génère en moyenne 10 minutes supplémentaires de rédaction, de qualification et de saisie. La durée de conversation est réelle (3CX) ; les 10 minutes sont estimées.",
+    "tchats": "En l'absence de durée fiable dans les données actuelles, la charge liée aux tchats est estimée sur la base conventionnelle de 20 minutes d'échange et 10 minutes de rédaction et de saisie par tchat traité. Cette hypothèse devra être réévaluée lorsque le nouveau CRM fournira des durées réelles exploitables.",
+    "mails": "La charge liée aux mails est estimée sur la base conventionnelle de 15 minutes par mail traité.",
+    "procureur": "Dans les données actuelles du 3018, les transmissions comptabilisées dans la catégorie « Procureur » sont assimilées aux transmissions réalisées au titre de l'article 40 du code de procédure pénale.",
+    "men": "Le chiffre « MEN » regroupe dans les données sources les signalements « harcèlement scolaire » destinés à l'Éducation nationale et à l'Agriculture.",
+    "signal_sports": "Aucune donnée Signal-Sports n'est disponible dans les fichiers actuels : la catégorie est affichée « n.d. » (jamais zéro) et pourra être alimentée plus tard.",
+    "taux_occupation": "Le « taux d'occupation théorique sur les activités mesurables » rapporte la charge théorique mesurée à la capacité contractuelle théorique. Ce n'est ni une mesure de productivité, ni une mesure exhaustive de l'activité du service."
+  },
+
+  "activites_hors_calcul": [
+    "relances",
+    "échanges complémentaires avec les utilisateurs ou les familles",
+    "recherches juridiques",
+    "relectures et validations",
+    "coordination interne",
+    "réunions liées aux situations",
+    "accompagnement des écoutants",
+    "formation",
+    "management",
+    "incidents techniques",
+    "reporting",
+    "tâches administratives"
+  ]
+}

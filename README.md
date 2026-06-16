@@ -208,3 +208,34 @@ Les 12 fichiers JSON sont renseignés. Limites connues, détaillées dans l'ongl
 - **BIK / Insafe :** données déclaratives Q1 2026, présentées séparément.
 
 Aucun fichier n'est vide.
+
+---
+
+## Onglet « Charge de travail » (ajout)
+
+Cet onglet convertit l'activité mesurable en **heures théoriques estimées** et la compare à la **capacité contractuelle théorique** (ETP × 151,67 h/mois). C'est une **estimation partielle** : elle ne couvre pas tout le travail du service.
+
+### Où se modifient les temps standards
+Tout le paramétrage est dans un seul fichier : **`data/parametres_charge.json`**.
+On peut y changer, sans toucher au code :
+- les temps standards par activité (appels, tchats, mails, signalements, transmissions) ;
+- la base ETP (151,67 h/mois) ;
+- les mentions méthodologiques et la liste des activités encore hors calcul.
+
+Après modification, on enregistre le fichier et on recharge la page : l'affichage se met à jour tout seul.
+
+### Ce que l'onglet affiche
+- un sélecteur de période (cumul janv.–mai, trimestre, ou un mois) ;
+- les indicateurs clés : charge mesurée (h), équivalent journées de 7 h, équivalent ETP mobilisé, capacité contractuelle, taux d'occupation théorique ;
+- la répartition des heures par activité ;
+- le détail des composantes ;
+- un grand tableau détaillé par mois ;
+- la liste des activités non mesurées et les limites.
+
+Des cartes de synthèse apparaissent aussi dans **Synthèse**, un tableau synthétique dans **Comparaison historique**, et tous les temps standards + formules + contrôles dans **Méthodologie**.
+
+### Règles importantes
+- Une donnée absente est affichée **« n.d. »**, jamais comptée comme zéro.
+- La durée des appels est **réelle** (3CX) ; tchats, mails et signalements reposent sur des **temps conventionnels estimés**.
+- **Signal-Sports** n'existe pas dans les fichiers actuels : la catégorie est prête mais affiche « n.d. ».
+- Le taux d'occupation théorique **n'est pas** une mesure de productivité.

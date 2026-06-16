@@ -10,6 +10,7 @@ const SECTIONS = [
   { id: "historique",   label: "Comparaison historique" },
   { id: "sollicitations", label: "Sollicitations" },
   { id: "performance",  label: "Performance des canaux" },
+  { id: "charge",       label: "Charge de travail" },
   { id: "signalements", label: "Signalements Trusted Flagger" },
   { id: "anonymat",     label: "Sorties d'anonymat" },
   { id: "bik",          label: "Données BIK / Insafe" },
@@ -29,6 +30,7 @@ const FICHIERS = {
   bik:         "data/bik.json",
   methodology: "data/methodology.json",
   etp:         "data/etp.json",
+  charge:      "data/parametres_charge.json",
 };
 
 const DATA = {};
@@ -185,6 +187,10 @@ function renderSynthese() {
     if (etpMoy != null) h += '<div class="kpi"><p class="kpi-label">ETP moyen <span class="info" title="ETP théorique moyen issu des cycles Octime.">i</span></p><p class="kpi-valeur">' + show(etpMoy) + '</p><p class="kpi-sub">janv.–mai</p></div>';
     h += "</div>";
   }
+
+  /* Charge de travail théorique — cartes de synthèse (cumul janv.-mai).
+     Détail complet et limites dans l'onglet « Charge de travail ». */
+  h += chargeKpisSynthese();
 
   /* Janvier 2026 / janvier 2025 */
   const c = m && m.comparaison_historique_janvier;
@@ -349,6 +355,9 @@ function renderHistorique() {
 
   /* Tableau transversal janvier-mai, avant les graphiques mensuels */
   h += histVueEnsemble();
+
+  /* Vue synthétique de la charge théorique (le détail complet reste dans l'onglet « Charge de travail ») */
+  h += chargeTableHistorique();
 
   /* Bloc 1 — activité */
   h += '<div class="bloc"><h3 class="bloc-titre">Activité (globale et traitée)</h3>';
@@ -863,6 +872,9 @@ function renderMethodologie() {
     if (e.ip_procureur) h += noteBox(esc(e.ip_procureur));
     h += "</div>";
   }
+  /* Charge de travail théorique : temps standards, formules, limites */
+  h += chargeMethodologie();
+
   if (m.confidentialite) h += noteBox("<strong>Confidentialité.</strong> " + esc(m.confidentialite), "vigilance");
   return h;
 }
@@ -872,6 +884,7 @@ const RENDERERS = {
   telephone: renderTelephone, tchat: renderTchat, signalements: renderSignalements, anonymat: renderAnonymat,
   bik: renderBik, methodologie: renderMethodologie,
   sollicitations: renderSollicitations, performance: renderPerformance,
+  charge: renderCharge,
 };
 
 /* ---------------- Interactions après rendu ---------------- */
@@ -927,21 +940,10 @@ function brancherInteractions(id) {
     };
     wireP("perf-periode", "periode"); wireP("perf-file", "file");
   }
-  if (id === "historique") {
-    remplirHistorique();
-    remplirProtection();
-    const sel = document.getElementById("hist-selecteur");
-    if (sel) sel.querySelectorAll(".seg").forEach(btn => btn.addEventListener("click", () => {
-      HIST_IND = btn.dataset.ind;
-      sel.querySelectorAll(".seg").forEach(b => b.classList.toggle("actif", b === btn));
-      remplirHistorique();
-    }));
-    const selP = document.getElementById("prot-selecteur");
-    if (selP) selP.querySelectorAll(".seg").forEach(btn => btn.addEventListener("click", () => {
-      PROT_IND = btn.dataset.ind;
-      selP.querySelectorAll(".seg").forEach(b => b.classList.toggle("actif", b === btn));
-      remplirProtection();
-    }));
+  if (id === "charge") {
+    chargeFill();
+    const sel = document.getElementById("charge-periode");
+    if (sel) sel.addEventListener("change", () => { CHARGE_F.periode = sel.value; chargeFill(); });
   }
 }
 
@@ -1677,3 +1679,379 @@ function etpMoyenne(keys, inclurePartiels) {
 }
 /* clés mensuelles d'une année (1..12) -> ["2026-01",...] limité aux mois fournis */
 function moisKeys(annee, nums) { return nums.map(n => annee + "-" + String(n).padStart(2, "0")); }
+
+/* =================================================================
+   MODULE CHARGE DE TRAVAIL THÉORIQUE
+   -----------------------------------------------------------------
+   Convertit l'activité mesurable en heures théoriques estimées et la
+   compare à la capacité contractuelle théorique (ETP × 151,67 h/mois).
+   Tous les temps sont des estimations (sauf la durée réelle des appels,
+   issue des exports 3CX). Aucune donnée absente n'est comptée comme zéro.
+   Tout est dérivé des fichiers JSON ; les temps standards et la base ETP
+   sont dans data/parametres_charge.json.
+   ================================================================= */
+
+let CHARGE_F = { periode: "cumul" };
+
+function tStd() { return (DATA.charge && DATA.charge.temps_standards_min) || {}; }
+function etpHeuresMois() { return (DATA.charge && DATA.charge.etp && DATA.charge.etp.heures_par_etp_mois) || 151.67; }
+
+/* "570:39:45" (h:m:s, les heures peuvent dépasser 24) -> minutes ; null si absent */
+function hmsMin(s) {
+  if (s == null) return null;
+  const p = String(s).split(":").map(Number);
+  if (p.some(isNaN)) return null;
+  return (p[0] || 0) * 60 + (p[1] || 0) + (p[2] || 0) / 60;
+}
+/* additions tolérantes aux null (null seulement si TOUTES les valeurs sont nulles) */
+function sumVals(arr) { let s = 0, has = false; arr.forEach(v => { if (v != null) { s += v; has = true; } }); return has ? s : null; }
+function mulN(n, t) { return n == null ? null : n * t; }
+function minToH(m) { return m == null ? null : Math.round(m / 60 * 10) / 10; }
+function fmtH(h) { return h == null ? '<span class="nd">n.d.</span>' : nf(h) + " h"; }
+
+/* Construit la table mensuelle de charge (2026, mois où le téléphone existe). */
+function chargeParMois() {
+  const T = tStd();
+  const phone = DATA.phone, chat = DATA.chat, mon = DATA.monthly, tf = DATA.flagger, an = DATA.anonymity;
+  if (!phone || !phone.par_mois) return [];
+  const find = (arr, k, key) => { if (!arr) return null; const o = arr.find(x => x.mois === k); return o ? o[key] : null; };
+  const mailDe = k => {
+    if (!mon || !mon.activite_traitee_tous_canaux) return null;
+    const o = mon.activite_traitee_tous_canaux.par_mois.find(x => x.mois === k);
+    return o ? o.mails : null;
+  };
+  const anDetail = (grp, k) => { try { const v = an.detail_par_mois_destinataire[grp][k]; return v == null ? null : v; } catch (e) { return null; } };
+  const anIps = (dest, k) => { try { const v = an.sous_destinataires_ips_mensuel.par_destinataire[dest].par_mois[k]; return v == null ? null : v; } catch (e) { return null; } };
+
+  return phone.par_mois.filter(p => String(p.mois).indexOf("2026") === 0).map(p => {
+    const k = p.mois;
+    const ad = (p.appels_decroches == null ? null : p.appels_decroches);
+    const duree = hmsMin(p.temps_total_conversation);
+    const tc = find(chat && chat.par_mois, k, "tchats_traites");
+    const ml = mailDe(k);
+    const plat = find(tf && tf.par_mois_2026, k, "signalements");
+    const men = anDetail("harcelement_scolaire", k);
+    const proc = anIps("Procureur", k);
+    const crip = anIps("CRIP", k);
+    const pharos = anDetail("pharos", k);
+    return {
+      key: k, label: libelleCourt(k),
+      appels_decroches: ad,
+      duree_min: duree,
+      saisie_appels_min: mulN(ad, T.appel_saisie),
+      tchats_traites: tc,
+      tchat_ech_min: mulN(tc, T.tchat_echange),
+      tchat_sai_min: mulN(tc, T.tchat_saisie),
+      mails: ml, mails_min: mulN(ml, T.mail),
+      plat: plat, plat_min: mulN(plat, T.plateformes),
+      men: men, men_min: mulN(men, T.men),
+      proc: proc, proc_min: mulN(proc, T.procureur_article40),
+      crip: crip, crip_min: mulN(crip, T.ip_crip),
+      sport: null, sport_min: null,
+      pharos: pharos, pharos_min: mulN(pharos, T.pharos),
+      etp: etpDe(k),
+    };
+  });
+}
+
+/* Liste de mois retenue selon le filtre de période. */
+function chargeMoisFiltres() {
+  const all = chargeParMois();
+  if (CHARGE_F.periode === "Q1") return all.filter(m => ["2026-01", "2026-02", "2026-03"].indexOf(m.key) >= 0);
+  if (/^2026-\d\d$/.test(CHARGE_F.periode)) return all.filter(m => m.key === CHARGE_F.periode);
+  return all; /* cumul */
+}
+
+/* Agrège une liste de mois -> tous les indicateurs de charge. */
+function chargeCalc(months) {
+  const sum = field => sumVals(months.map(m => m[field]));
+  const duree = sum("duree_min"), saiApp = sum("saisie_appels_min");
+  const tchEch = sum("tchat_ech_min"), tchSai = sum("tchat_sai_min");
+  const mails = sum("mails_min");
+  const plat = sum("plat_min"), men = sum("men_min"), proc = sum("proc_min"), crip = sum("crip_min"), pharos = sum("pharos_min");
+
+  const saisieTot = sumVals([saiApp, tchSai]);                 /* rédaction & saisie (appels + tchats) */
+  const signalMin = sumVals([plat, men, proc, crip, pharos]);  /* Signal-Sports n.d. -> exclu, signalé */
+  const totalMin = sumVals([duree, saiApp, tchEch, tchSai, mails, plat, men, proc, crip, pharos]);
+
+  /* ETP : somme des capacités mensuelles, jamais une moyenne arrondie */
+  let etpSum = 0, etpMois = 0, partielEtp = false;
+  months.forEach(m => { if (m.etp != null) { etpSum += m.etp; etpMois++; if (etpEstPartiel(m.key)) partielEtp = true; } });
+  const HE = etpHeuresMois();
+  const dispoH = etpMois ? Math.round(etpSum * HE * 10) / 10 : null;
+  const totalH = minToH(totalMin);
+  const equivEtp = (totalH != null && etpMois) ? Math.round(totalH / (HE * months.length) * 10) / 10 : null;
+  const taux = (totalH != null && dispoH) ? Math.round(totalH / dispoH * 1000) / 10 : null;
+  const journees = (totalH != null) ? Math.round(totalH / 7 * 10) / 10 : null;
+
+  /* répartition (heures) — tranches non chevauchantes dont la somme = total */
+  const slices = [
+    { label: "Appels — durée réelle", v: minToH(duree), color: BLEU },
+    { label: "Rédaction et saisie (appels + tchats)", v: minToH(saisieTot), color: "#5B6BFB" },
+    { label: "Tchats — échange estimé", v: minToH(tchEch), color: "#8A93FB" },
+    { label: "Mails — estimé", v: minToH(mails), color: "#B7BDFC" },
+    { label: "Signalements plateformes", v: minToH(plat), color: JAUNE },
+    { label: "MEN", v: minToH(men), color: "#F0A500" },
+    { label: "Procureur – article 40", v: minToH(proc), color: "#E08600" },
+    { label: "IP / CRIP", v: minToH(crip), color: "#C77400" },
+    { label: "Pharos", v: minToH(pharos), color: "#A86200" },
+  ];
+  /* principale activité consommatrice */
+  let principale = null;
+  slices.forEach(s => { if (s.v != null && (principale == null || s.v > principale.v)) principale = s; });
+
+  return {
+    months: months, nbMois: months.length,
+    counts: {
+      appels_decroches: sumVals(months.map(m => m.appels_decroches)),
+      tchats_traites: sumVals(months.map(m => m.tchats_traites)),
+      mails: sumVals(months.map(m => m.mails)),
+      plat: sumVals(months.map(m => m.plat)), men: sumVals(months.map(m => m.men)),
+      proc: sumVals(months.map(m => m.proc)), crip: sumVals(months.map(m => m.crip)),
+      pharos: sumVals(months.map(m => m.pharos)),
+      signalements: sumVals(months.map(m => sumVals([m.plat, m.men, m.proc, m.crip, m.pharos]))),
+    },
+    h: {
+      duree: minToH(duree), saisie: minToH(saisieTot), tchatEch: minToH(tchEch), mails: minToH(mails),
+      signalements: minToH(signalMin), total: totalH, journees: journees,
+    },
+    slices: slices, principale: principale,
+    etpSum: etpMois ? Math.round(etpSum * 100) / 100 : null, etpMois: etpMois, partielEtp: partielEtp,
+    dispoH: dispoH, equivEtp: equivEtp, taux: taux,
+  };
+}
+
+/* Libellé lisible d'une période filtrée. */
+function chargePeriodeLabel() {
+  if (CHARGE_F.periode === "Q1") return "T1 2026 (janv.–mars)";
+  if (/^2026-\d\d$/.test(CHARGE_F.periode)) return libelleCourt(CHARGE_F.periode);
+  return "Cumul janv.–mai 2026";
+}
+
+/* ---- Cartes pour l'onglet Synthèse (cumul janv.-mai) ---- */
+function chargeKpisSynthese() {
+  if (!DATA.charge || !DATA.phone) return "";
+  const all = chargeParMois();
+  if (!all.length) return "";
+  const c = chargeCalc(all);
+  let h = '<div class="bloc"><h3 class="bloc-titre">Charge de travail théorique <span class="mini-badge">estimation</span></h3>';
+  h += '<p class="intro">Activité mesurable convertie en heures théoriques estimées, comparée à la capacité contractuelle théorique. Estimation partielle : voir l\'onglet « Charge de travail ».</p>';
+  h += '<div class="kpis">';
+  h += kpi("Charge théorique mesurée", fmtH(c.h.total), "cumul janv.–mai", "primaire");
+  h += kpi("Équivalent ETP mobilisé", show(c.equivEtp), "sur activités mesurables", "primaire");
+  h += kpi("ETP contractuels (moyenne)", show(c.etpMois ? Math.round(c.etpSum / c.etpMois * 100) / 100 : null), "capacité théorique", "accent");
+  h += '<div class="kpi"><p class="kpi-label">Taux d\'occupation théorique <span class="info" title="Charge théorique mesurée / capacité contractuelle théorique. Ni productivité, ni mesure exhaustive.">i</span></p><p class="kpi-valeur">' + showPct(c.taux) + '</p><p class="kpi-sub">activités mesurables</p></div>';
+  if (c.principale) h += kpi("Principale activité consommatrice", esc(c.principale.label), fmtH(c.principale.v), "");
+  h += "</div>";
+  h += noteBox("Ne représente pas l'intégralité du temps de travail du service. Signal-Sports : n.d. (non comptabilisé).");
+  h += "</div>";
+  return h;
+}
+
+/* ---- Tableau synthétique pour l'onglet Comparaison historique ---- */
+function chargeTableHistorique() {
+  if (!DATA.charge || !DATA.phone) return "";
+  const all = chargeParMois();
+  if (!all.length) return "";
+  let h = '<div class="bloc"><h3 class="bloc-titre">Charge de travail théorique — vue synthétique <span class="mini-badge">estimation</span></h3>';
+  h += '<p class="intro">Une ligne par mois et un cumul. Le détail complet (composantes, répartition, limites) est dans l\'onglet « Charge de travail ».</p>';
+  h += '<div class="table-enveloppe"><table><thead><tr>'
+    + "<th>Période</th><th>ETP contractuels</th><th>Charge théo. (h)</th><th>Équiv. ETP</th><th>Taux occ. théo.</th>"
+    + "<th>Appels traités</th><th>Tchats traités</th><th>Mails traités</th><th>Signal. &amp; transm.</th></tr></thead><tbody>";
+  function row(label, c, fort) {
+    return "<tr" + (fort ? ' class="vue-groupe-row"' : "") + '><td style="text-align:left' + (fort ? ";font-weight:700" : "") + '">' + esc(label) + "</td>"
+      + td(c.etpMois ? Math.round(c.etpSum / c.etpMois * 100) / 100 : null)
+      + "<td>" + fmtH(c.h.total) + "</td>" + td(c.equivEtp) + td(c.taux, true)
+      + td(c.counts.appels_decroches) + td(c.counts.tchats_traites) + td(c.counts.mails) + td(c.counts.signalements) + "</tr>";
+  }
+  all.forEach(m => { h += row(m.label, chargeCalc([m]), false); });
+  h += row("Cumul janv.–mai", chargeCalc(all), true);
+  h += "</tbody></table></div>";
+  h += noteBox("Charge théorique = appels (durée réelle + 10 min de saisie) + tchats (30 min estimés) + mails (15 min estimés) + signalements et transmissions. Estimation partielle.");
+  h += "</div>";
+  return h;
+}
+
+/* ---- Bloc méthodologique pour l'onglet Méthodologie ---- */
+function chargeMethodologie() {
+  const cfg = DATA.charge;
+  if (!cfg) return "";
+  const T = cfg.temps_standards_min, L = cfg.libelles || {}, N = cfg.nature_donnee || {};
+  let h = '<div class="bloc"><h3 class="bloc-titre">Charge de travail théorique — temps standards</h3>';
+  h += '<p class="intro">Temps THÉORIQUES ESTIMÉS (non chronométrés), modifiables dans data/parametres_charge.json.</p>';
+  h += '<div class="table-enveloppe"><table><thead><tr><th>Activité</th><th>Temps standard</th><th>Nature</th></tr></thead><tbody>';
+  const ordre = ["appel_saisie", "tchat_echange", "tchat_saisie", "mail", "men", "plateformes", "procureur_article40", "ip_crip", "signal_sports", "pharos"];
+  ordre.forEach(k => {
+    if (T[k] == null) return;
+    h += '<tr><td style="text-align:left">' + esc(L[k] || k) + "</td><td>" + esc(T[k]) + " min</td><td style=\"text-align:left\">" + esc(N[k] || "") + "</td></tr>";
+  });
+  h += "</tbody></table></div>";
+
+  if (cfg.etp) {
+    h += '<div class="kv">'
+      + '<div class="k">Base ETP</div><div class="v" style="text-align:left;font-weight:500">' + esc(cfg.etp.base) + "</div>"
+      + '<div class="k">Heures disponibles</div><div class="v" style="text-align:left;font-weight:500">' + esc(cfg.etp.methode_periode) + "</div>"
+      + '<div class="k">Qualificatif</div><div class="v" style="text-align:left;font-weight:500">' + esc(cfg.etp.qualificatif) + " — " + esc(cfg.etp.note) + "</div>"
+      + "</div>";
+  }
+
+  h += '<div class="bloc"><h4 class="bloc-titre">Formules</h4><ul class="liste-propre">'
+    + "<li>charge appels = durée réelle des appels décrochés + (appels décrochés × 10 min)</li>"
+    + "<li>charge tchats = tchats traités × 30 min (20 échange + 10 saisie, estimés)</li>"
+    + "<li>charge mails = mails traités × 15 min (estimés)</li>"
+    + "<li>charge signalements = (MEN × 20) + (plateformes × 20) + (article 40 × 120) + (IP/CRIP × 105) + (Signal-Sports × 20) + (Pharos × 30), en minutes</li>"
+    + "<li>heures disponibles = somme mensuelle de (ETP × 151,67 h)</li>"
+    + "<li>équivalent ETP mobilisé = charge totale (h) / (151,67 × nombre de mois)</li>"
+    + "<li>taux d'occupation théorique = charge totale (h) / heures disponibles × 100</li>"
+    + "</ul></div>";
+
+  /* contrôles automatiques */
+  const all = chargeParMois();
+  if (all.length) {
+    const ctrls = [
+      { c: "1 article 40", a: "120 min", v: T.procureur_article40 + " min", ok: T.procureur_article40 === 120 },
+      { c: "1 IP / CRIP", a: "105 min (1 h 45)", v: T.ip_crip + " min", ok: T.ip_crip === 105 },
+      { c: "1 tchat traité", a: "30 min", v: (T.tchat_echange + T.tchat_saisie) + " min", ok: (T.tchat_echange + T.tchat_saisie) === 30 },
+      { c: "1 mail traité", a: "15 min", v: T.mail + " min", ok: T.mail === 15 },
+      { c: "1 signalement plateforme", a: "20 min", v: T.plateformes + " min", ok: T.plateformes === 20 },
+      { c: "140 articles 40", a: "280 h", v: nf(Math.round(140 * T.procureur_article40 / 60 * 10) / 10) + " h", ok: 140 * T.procureur_article40 / 60 === 280 },
+    ];
+    h += '<div class="bloc"><h4 class="bloc-titre">Contrôles de cohérence (charge)</h4><div class="table-enveloppe"><table><thead><tr><th>Contrôle</th><th>Attendu</th><th>Calculé</th><th>Résultat</th></tr></thead><tbody>';
+    ctrls.forEach(x => h += '<tr><td style="text-align:left">' + esc(x.c) + "</td><td>" + esc(x.a) + "</td><td>" + esc(x.v) + '</td><td><span class="badge ' + (x.ok ? "consolide\">conforme" : "partiel\">à vérifier") + "</span></td></tr>");
+    h += "</tbody></table></div></div>";
+  }
+
+  /* mentions */
+  const M = cfg.mentions_methodologiques || {};
+  Object.keys(M).forEach(k => { h += noteBox("<strong>" + esc(k.replace(/_/g, " ")) + ".</strong> " + esc(M[k])); });
+
+  /* activités hors calcul */
+  if (cfg.activites_hors_calcul) {
+    h += '<div class="bloc"><h4 class="bloc-titre">Activités encore hors calcul</h4>'
+      + '<p class="intro">La charge mesurée est une estimation partielle. Ne sont pas convertis en temps :</p>'
+      + '<ul class="liste-propre">' + cfg.activites_hors_calcul.map(x => "<li>" + esc(x) + "</li>").join("") + "</ul></div>";
+  }
+  h += "</div>";
+  return h;
+}
+
+/* ---- Onglet « Charge de travail » : structure (le contenu filtré est injecté par chargeFill) ---- */
+function renderCharge() {
+  if (!DATA.charge) return '<p class="intro">Paramètres de charge indisponibles (data/parametres_charge.json).</p>';
+  const all = chargeParMois();
+  if (!DATA.phone || !all.length) return '<p class="intro">Données téléphone indisponibles : la charge ne peut pas être calculée.</p>';
+
+  let h = '<p class="intro">Conversion de l\'activité mesurable en heures théoriques <strong>estimées</strong>, comparée à la capacité contractuelle théorique. La durée des appels est réelle (3CX) ; le reste repose sur des temps conventionnels. Cette charge ne représente jamais l\'intégralité du temps de travail du service.</p>';
+
+  /* sélecteur de période */
+  h += '<div class="bloc"><label class="filtre-label" for="charge-periode">Période</label> ';
+  h += '<select id="charge-periode" class="filtre-select">';
+  h += '<option value="cumul">Cumul janv.–mai 2026</option>';
+  h += '<option value="Q1">T1 2026 (janv.–mars)</option>';
+  all.forEach(m => { h += '<option value="' + m.key + '">' + esc(m.label) + "</option>"; });
+  h += "</select></div>";
+
+  /* zone dynamique (KPIs + répartition + composantes) */
+  h += '<div id="charge-zone"></div>';
+
+  /* grand tableau mensuel détaillé (statique, toutes périodes) */
+  h += chargeGrandTableau(all);
+
+  /* charge non mesurée */
+  const cfg = DATA.charge;
+  if (cfg.activites_hors_calcul) {
+    h += '<div class="bloc"><h3 class="bloc-titre">Charge non mesurée</h3>'
+      + '<p class="intro">Certaines activités ne sont pas encore converties en temps. Le total ci-dessus est donc une estimation partielle de la charge réelle.</p>'
+      + '<ul class="liste-propre">' + cfg.activites_hors_calcul.map(x => "<li>" + esc(x) + "</li>").join("")
+      + '<li>tchats sans durée réelle (durée conventionnelle utilisée)</li><li>Signal-Sports (donnée absente : n.d.)</li></ul></div>';
+  }
+
+  h += noteBox("Toutes les valeurs marquées « estimation » reposent sur des temps standards conventionnels (data/parametres_charge.json), et non sur des durées chronométrées. Une donnée absente est affichée « n.d. », jamais zéro.");
+  return h;
+}
+
+/* grand tableau : une ligne par mois + cumul, colonnes détaillées */
+function chargeGrandTableau(all) {
+  let h = '<div class="bloc"><h3 class="bloc-titre">Tableau détaillé par mois <span class="mini-badge">estimation</span></h3>';
+  h += '<div class="table-enveloppe"><table class="compact"><thead><tr>'
+    + "<th>Période</th><th>ETP contr.</th><th>ETP écoute</th>"
+    + "<th>Appels pris</th><th>Durée appels</th><th>Dossiers tél.</th><th>Réd. &amp; saisie</th>"
+    + "<th>Tchats traités</th><th>Durée tchats</th>"
+    + "<th>Plateformes</th><th>MEN</th><th>Art. 40</th><th>IP/CRIP</th><th>Signal-Sports</th><th>Pharos</th>"
+    + "<th>Charge théo. (h)</th><th>Journées 7 h</th><th>Équiv. ETP</th><th>Taux occ.</th><th>Part non quantif.</th></tr></thead><tbody>";
+
+  function row(label, months, fort) {
+    const c = chargeCalc(months);
+    const etpC = c.etpMois ? Math.round(c.etpSum / c.etpMois * 100) / 100 : null;
+    return "<tr" + (fort ? ' style="font-weight:700;background:#fafbff"' : "") + '><td style="text-align:left">' + esc(label) + "</td>"
+      + td(etpC)
+      + '<td class="nd">n.d.</td>'                                   /* ETP en écoute : non disponible */
+      + td(c.counts.appels_decroches)
+      + "<td>" + fmtH(c.h.duree) + "</td>"
+      + '<td class="nd">n.d.</td>'                                   /* nombre de dossiers : non disponible */
+      + "<td>" + fmtH(c.h.saisie) + "</td>"
+      + td(c.counts.tchats_traites)
+      + '<td class="nd">n.d.</td>'                                   /* durée réelle des tchats : non disponible */
+      + td(c.counts.plat) + td(c.counts.men) + td(c.counts.proc) + td(c.counts.crip)
+      + '<td class="nd">n.d.</td>'                                   /* Signal-Sports : non disponible */
+      + td(c.counts.pharos)
+      + "<td>" + fmtH(c.h.total) + "</td><td>" + (c.h.journees == null ? '<span class="nd">n.d.</span>' : nf(c.h.journees)) + "</td>"
+      + td(c.equivEtp) + td(c.taux, true)
+      + "<td style='text-align:left;font-size:12px;color:#8A90A2'>estimation partielle</td></tr>";
+  }
+  all.forEach(m => { h += row(m.label, [m], false); });
+  h += row("Cumul janv.–mai", all, true);
+  h += "</tbody></table></div>";
+  h += noteBox("« Dossiers tél. », « ETP en écoute », « durée des tchats » et « Signal-Sports » ne sont pas disponibles dans les fichiers actuels : affichés « n.d. », jamais zéro. La saisie téléphonique est estimée à 10 min par appel décroché.");
+  h += "</div>";
+  return h;
+}
+
+/* injecte la zone dynamique selon la période choisie */
+function chargeFill() {
+  const zone = document.getElementById("charge-zone");
+  if (!zone) return;
+  const months = chargeMoisFiltres();
+  if (!months.length) { zone.innerHTML = '<p class="intro">Aucune donnée pour cette période.</p>'; return; }
+  const c = chargeCalc(months);
+
+  let h = '<div class="bloc"><h3 class="bloc-titre">' + esc(chargePeriodeLabel()) + '</h3><div class="kpis">';
+  h += kpi("Charge théorique mesurée", fmtH(c.h.total), "estimation partielle", "primaire");
+  h += kpi("Équivalent journées (7 h)", (c.h.journees == null ? '<span class="nd">n.d.</span>' : nf(c.h.journees)), "", "");
+  h += kpi("Équivalent ETP mobilisé", show(c.equivEtp), "activités mesurables", "primaire");
+  h += kpi("Capacité contractuelle", fmtH(c.dispoH) + (c.partielEtp ? ' <span class="mini-badge part">partiel</span>' : ""), "ETP × 151,67 h", "accent");
+  h += '<div class="kpi"><p class="kpi-label">Taux d\'occupation théorique <span class="info" title="Charge mesurée / capacité contractuelle. Ni productivité, ni mesure exhaustive.">i</span></p><p class="kpi-valeur">' + showPct(c.taux) + '</p><p class="kpi-sub">sur activités mesurables</p></div>';
+  h += "</div></div>";
+
+  /* répartition des heures théoriques */
+  const sl = c.slices.filter(s => s.v != null);
+  h += '<div class="bloc"><h3 class="bloc-titre">Répartition des heures théoriques</h3>';
+  if (sl.length) {
+    h += htmlHBars(sl.map(s => ({ label: s.label, v: s.v })), BLEU);
+    if (c.principale) h += noteBox("Principale activité consommatrice : <strong>" + esc(c.principale.label) + "</strong> (" + fmtH(c.principale.v) + ").");
+  } else h += '<p class="intro">Données indisponibles pour cette période.</p>';
+  h += noteBox("Signal-Sports : n.d. (non représenté). Les heures « rédaction et saisie » regroupent la saisie des appels et des tchats.");
+  h += "</div>";
+
+  /* détail des composantes (3 grandes catégories) */
+  h += '<div class="bloc"><h3 class="bloc-titre">Détail des composantes</h3><div class="table-enveloppe"><table><thead><tr><th>Composante</th><th>Volume</th><th>Charge théorique</th><th>Nature</th></tr></thead><tbody>';
+  function lig(lib, vol, heures, nature) {
+    return '<tr><td style="text-align:left">' + esc(lib) + "</td><td>" + (vol == null ? '<span class="nd">n.d.</span>' : vol) + "</td><td>" + fmtH(heures) + '</td><td style="text-align:left;font-size:12px">' + esc(nature) + "</td></tr>";
+  }
+  h += '<tr class="vue-groupe"><td colspan="4">Charge directe mesurable</td></tr>';
+  h += lig("Appels — durée réelle", (c.counts.appels_decroches == null ? null : show(c.counts.appels_decroches) + " appels"), c.h.duree, "réelle (3CX)");
+  h += lig("Rédaction et saisie (appels + tchats)", null, c.h.saisie, "estimée (10 min/contact)");
+  h += lig("Tchats — échange estimé", (c.counts.tchats_traites == null ? null : show(c.counts.tchats_traites) + " tchats"), c.slices[2].v, "estimée (20 min)");
+  h += lig("Mails — estimé", (c.counts.mails == null ? null : show(c.counts.mails) + " mails"), c.h.mails, "estimée (15 min)");
+  h += '<tr class="vue-groupe"><td colspan="4">Charge de signalement et de transmission</td></tr>';
+  h += lig("Signalements plateformes", (c.counts.plat == null ? null : show(c.counts.plat)), c.slices[4].v, "réel × 20 min");
+  h += lig("MEN", (c.counts.men == null ? null : show(c.counts.men)), c.slices[5].v, "réel × 20 min");
+  h += lig("Procureur – article 40", (c.counts.proc == null ? null : show(c.counts.proc)), c.slices[6].v, "réel × 120 min");
+  h += lig("IP / CRIP", (c.counts.crip == null ? null : show(c.counts.crip)), c.slices[7].v, "réel × 105 min");
+  h += lig("Signal-Sports", null, null, "donnée absente (n.d.)");
+  h += lig("Pharos", (c.counts.pharos == null ? null : show(c.counts.pharos)), c.slices[8].v, "réel × 30 min");
+  h += '<tr style="font-weight:700;background:#fafbff"><td style="text-align:left">Charge totale mesurable</td><td></td><td>' + fmtH(c.h.total) + "</td><td></td></tr>";
+  h += "</tbody></table></div></div>";
+
+  zone.innerHTML = h;
+}
