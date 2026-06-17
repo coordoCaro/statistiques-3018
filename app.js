@@ -10,6 +10,7 @@ const SECTIONS = [
   { id: "historique",   label: "Comparaison historique" },
   { id: "sollicitations", label: "Sollicitations" },
   { id: "performance",  label: "Performance des canaux" },
+  { id: "etp_activite", label: "ETP et activité" },
   { id: "signalements", label: "Signalements Trusted Flagger" },
   { id: "anonymat",     label: "Sorties d'anonymat" },
   { id: "bik",          label: "Données BIK / Insafe" },
@@ -29,6 +30,9 @@ const FICHIERS = {
   bik:         "data/bik.json",
   methodology: "data/methodology.json",
   etp:         "data/etp.json",
+  absences:    "data/absences_monthly.json",
+  workforce:   "data/workforce_monthly.json",
+  workload:    "data/workload_config.json",
 };
 
 const DATA = {};
@@ -176,15 +180,16 @@ function renderSynthese() {
   h += kpi("Sorties d'anonymat", show(a.sorties_anonymat && a.sorties_anonymat.total), (a.sorties_anonymat && a.sorties_anonymat.periode) || "", "primaire");
   h += "</div>";
 
-  /* Activité traitée + ETP moyen (janv.–mai 2026), présentés discrètement.
-     L'ETP est un simple indicateur de ressources : aucun ratio par ETP ici. */
-  const etpMoy = etpMoyenne(moisKeys(2026, [1, 2, 3, 4, 5]));
-  if (a.volume_activite_traite || etpMoy != null) {
+  /* Activité traitée tous canaux (cumul, volume — indicateur existant conservé). */
+  if (a.volume_activite_traite) {
     h += '<div class="kpis">';
-    if (a.volume_activite_traite) h += kpi("Activité traitée tous canaux", show(a.volume_activite_traite.cumul_janv_mai), "janv.–mai", "accent");
-    if (etpMoy != null) h += '<div class="kpi"><p class="kpi-label">ETP moyen <span class="info" title="ETP théorique moyen issu des cycles Octime.">i</span></p><p class="kpi-valeur">' + show(etpMoy) + '</p><p class="kpi-sub">janv.–mai</p></div>';
+    h += kpi("Activité traitée tous canaux", show(a.volume_activite_traite.cumul_janv_mai), "janv.–mai", "accent");
     h += "</div>";
   }
+
+  /* ETP et activité — dernier mois complet. C'est le SEUL endroit où l'ETP
+     apparaît dans la Synthèse ; le détail est dans l'onglet « ETP et activité ». */
+  h += blocEtpSynthese();
 
   /* Janvier 2026 / janvier 2025 */
   const c = m && m.comparaison_historique_janvier;
@@ -256,8 +261,12 @@ function texteSynthese() {
   if (a.signalements_trusted_flagger) L.push("Signalements envoyés (" + a.signalements_trusted_flagger.periode + ") : " + show(a.signalements_trusted_flagger.total));
   if (a.sorties_anonymat) L.push("Sorties d'anonymat (" + a.sorties_anonymat.periode + ") : " + show(a.sorties_anonymat.total));
   if (a.volume_activite_traite) L.push("Activité traitée janv.-mai : " + show(a.volume_activite_traite.cumul_janv_mai));
-  const etpMoy = etpMoyenne(moisKeys(2026, [1, 2, 3, 4, 5]));
-  if (etpMoy != null) L.push("ETP moyen (janv.-mai) : " + show(etpMoy));
+  const dmc = dernierMoisComplet();
+  if (dmc) {
+    const sol = solDuMois(dmc), etp = etpDe(dmc), ratio = (sol != null && etp) ? Math.round(sol / etp * 10) / 10 : null;
+    L.push("ETP et activité (" + libelleCourt(dmc) + ", dernier mois complet) : ETP " + show(etp)
+      + ", sollicitations prises en charge " + show(sol) + ", soit " + show(ratio) + " par ETP.");
+  }
   const c = m && m.comparaison_historique_janvier;
   if (c) {
     L.push("Janvier 2026 : sollicitations " + show(c.sollicitations["2026"]) + ", contacts traités " + show(c.contacts_traites["2026"]) + ", taux de réponse global " + showPct(c.taux_reponse_pct["2026"]) + ".");
@@ -303,12 +312,8 @@ function histVueEnsemble() {
     taux[y] = (con[y] != null && sol[y] != null && sol[y] > 0) ? Math.round(con[y] / sol[y] * 1000) / 10 : null;
   });
 
-  /* ETP moyen janvier-mai : n.d. en 2024 (etp.json commence en 2025). */
-  const etp = {
-    "2024": null,
-    "2025": etpMoyenne(moisKeys(2025, [1, 2, 3, 4, 5])),
-    "2026": etpMoyenne(moisKeys(2026, [1, 2, 3, 4, 5])),
-  };
+  /* ETP retiré de cet onglet : les ETP n'apparaissent que dans « Synthèse »
+     et « ETP et activité ». */
 
   function evoCell(c, unite) {
     if (c["2026"] == null || c["2025"] == null || c["2025"] === 0) return '<td><span class="nd">n.d.</span></td>';
@@ -325,8 +330,6 @@ function histVueEnsemble() {
   let h = '<div class="bloc"><h3 class="bloc-titre">Vue d\'ensemble — janvier à mai</h3>';
   h += '<div class="table-enveloppe"><table class="vue-ensemble"><thead><tr>'
     + "<th>Indicateur</th><th>2024</th><th>2025</th><th>2026</th><th>Évolution 2026 / 2025</th></tr></thead><tbody>";
-  h += sousTitre("Ressources");
-  h += rowVol("ETP moyen", etp);
   h += sousTitre("Contacts");
   h += rowVol("Sollicitations reçues", sol);
   h += rowVol("Contacts traités", con);
@@ -337,6 +340,7 @@ function histVueEnsemble() {
   h += rowVol("PHAROS", pha);
   h += rowVol("CRIP / IP / signalements au procureur regroupés", crip);
   h += "</tbody></table></div>";
+  h += noteBox("Comparaison limitée à la période de janvier à mai pour permettre une lecture homogène entre 2024, 2025 et 2026.");
   h += noteBox("Ces indicateurs décrivent des activités de nature et de durée différentes. Ils ne doivent pas être additionnés.");
   h += "</div>";
   return h;
@@ -863,6 +867,9 @@ function renderMethodologie() {
     if (e.ip_procureur) h += noteBox(esc(e.ip_procureur));
     h += "</div>";
   }
+  /* Méthodologie « ETP et activité » (temps standards) */
+  h += eaMethodologie();
+
   if (m.confidentialite) h += noteBox("<strong>Confidentialité.</strong> " + esc(m.confidentialite), "vigilance");
   return h;
 }
@@ -872,6 +879,7 @@ const RENDERERS = {
   telephone: renderTelephone, tchat: renderTchat, signalements: renderSignalements, anonymat: renderAnonymat,
   bik: renderBik, methodologie: renderMethodologie,
   sollicitations: renderSollicitations, performance: renderPerformance,
+  etp_activite: renderEtpActivite,
 };
 
 /* ---------------- Interactions après rendu ---------------- */
@@ -942,6 +950,19 @@ function brancherInteractions(id) {
       selP.querySelectorAll(".seg").forEach(b => b.classList.toggle("actif", b === btn));
       remplirProtection();
     }));
+  }
+  if (id === "etp_activite") {
+    eaFill();
+    const per = document.getElementById("ea-periode");
+    if (per) per.addEventListener("change", () => {
+      EA_F.periode = per.value;
+      const wrap = document.getElementById("ea-perso");
+      if (wrap) wrap.hidden = (per.value !== "perso");
+      eaFill();
+    });
+    const de = document.getElementById("ea-de"), a = document.getElementById("ea-a");
+    if (de) de.addEventListener("change", () => { EA_F.persoDe = de.value; if (EA_F.periode === "perso") eaFill(); });
+    if (a) a.addEventListener("change", () => { EA_F.persoA = a.value; if (EA_F.periode === "perso") eaFill(); });
   }
 }
 
@@ -1677,3 +1698,447 @@ function etpMoyenne(keys, inclurePartiels) {
 }
 /* clés mensuelles d'une année (1..12) -> ["2026-01",...] limité aux mois fournis */
 function moisKeys(annee, nums) { return nums.map(n => annee + "-" + String(n).padStart(2, "0")); }
+
+/* =================================================================
+   MODULE « ETP ET ACTIVITÉ »
+   -----------------------------------------------------------------
+   Met côte à côte ETP, absences, sollicitations prises en charge,
+   temps consacré aux sollicitations et aux activités annexes.
+   Données observées : ETP (Octime), absences (Octime), volumes,
+   durée réelle des appels (3CX). Données estimées : temps standards.
+   Une donnée absente reste « n.d. », jamais zéro. Aucune extrapolation.
+   Temps standards et base ETP : data/workload_config.json.
+   ================================================================= */
+
+let EA_F = { periode: "cumul", persoDe: "2026-01", persoA: "2026-05" };
+
+/* ---- accès configuration ---- */
+function cfgEA() { return DATA.workload || {}; }
+function heuresEtpMois() { return cfgEA().heures_par_etp_mois || 151.67; }
+function minEA(k, def) { const v = cfgEA()[k]; return (v == null ? def : v); }
+
+/* ---- petits utilitaires ---- */
+function hmsMin(s) { if (s == null) return null; const p = String(s).split(":").map(Number); if (p.some(isNaN)) return null; return (p[0] || 0) * 60 + (p[1] || 0) + (p[2] || 0) / 60; }
+function sumNN(arr) { let s = 0, has = false; arr.forEach(v => { if (v != null) { s += v; has = true; } }); return has ? s : null; }
+function mulNN(n, t) { return n == null ? null : n * t; }
+function h1(x) { return x == null ? null : Math.round(x * 10) / 10; }      /* arrondi 1 décimale */
+function fmtHe(x) { return x == null ? '<span class="nd">n.d.</span>' : nf(h1(x)) + " h"; }
+
+/* ---- index mensuels des différentes sources ---- */
+function solMoisIndex() { const o = {}; const p = DATA.monthly && DATA.monthly.activite_traitee_tous_canaux && DATA.monthly.activite_traitee_tous_canaux.par_mois; if (p) p.forEach(m => o[m.mois] = m); return o; }
+function solDuMois(key) { const m = solMoisIndex()[key]; return m ? m.total : null; }
+function solStatut(key) { const m = solMoisIndex()[key]; return m ? (m.statut || "") : ""; }
+
+function absIndex() { const o = {}; const p = DATA.absences && DATA.absences.par_mois; if (p) p.forEach(m => o[m.mois] = m); return o; }
+function absDuMois(key) { return absIndex()[key] || null; }
+
+function wfIndex() { const o = {}; const p = DATA.workforce && DATA.workforce.par_mois; if (p) p.forEach(m => o[m.mois] = m); return o; }
+function ecoutantsDuMois(key) { const m = wfIndex()[key]; return (m && m.nombre_ecoutants != null) ? m.nombre_ecoutants : null; }
+
+function phoneIndex() { const o = {}; const p = DATA.phone && DATA.phone.par_mois; if (p) p.forEach(m => o[m.mois] = m); return o; }
+function chatIndex() { const o = {}; const p = DATA.chat && DATA.chat.par_mois; if (p) p.forEach(m => o[m.mois] = m); return o; }
+function mailDuMois(key) { const m = solMoisIndex()[key]; return m ? (m.mails == null ? null : m.mails) : null; }
+
+function tfMoisDe(key) { const p = DATA.flagger && DATA.flagger.par_mois_2026; if (!p) return null; const o = p.find(x => x.mois === key); return o ? o.signalements : null; }
+function anDetailDe(grp, key) { try { const v = DATA.anonymity.detail_par_mois_destinataire[grp][key]; return v == null ? null : v; } catch (e) { return null; } }
+function anIpsDe(dest, key) { try { const v = DATA.anonymity.sous_destinataires_ips_mensuel.par_destinataire[dest].par_mois[key]; return v == null ? null : v; } catch (e) { return null; } }
+
+/* dernier mois complet de l'activité traitée (exclut tout mois marqué « partiel ») */
+function dernierMoisComplet() {
+  const p = DATA.monthly && DATA.monthly.activite_traitee_tous_canaux && DATA.monthly.activite_traitee_tous_canaux.par_mois;
+  if (!p) return null;
+  let dmc = null;
+  p.forEach(m => { if (m.total != null && String(m.statut || "").indexOf("partiel") < 0) dmc = m.mois; });
+  return dmc;
+}
+
+/* ---- calcul d'un mois (2026) ---- */
+function eaMois(key) {
+  const T = {
+    saisieAppel: minEA("minutes_saisie_appel", 10), tchat: minEA("minutes_tchat", 30), mail: minEA("minutes_mail", 15),
+    men: minEA("minutes_men", 10), plat: minEA("minutes_plateforme", 20), art40: minEA("minutes_article_40", 120),
+    crip: minEA("minutes_ip_crip", 105), pharos: minEA("minutes_pharos", 30), sport: minEA("minutes_signal_sports", 20),
+    reunion: minEA("heures_reunions_par_ecoutant_mois", 5),
+  };
+  const etp = etpDe(key), partiel = etpEstPartiel(key);
+  const ab = absDuMois(key);
+  const eco = ecoutantsDuMois(key);
+  const heuresEtp = etp != null ? etp * heuresEtpMois() : null;
+  const heuresAbs = ab ? ab.total_heures_absence : null;
+  const heuresApres = (heuresEtp != null && heuresAbs != null) ? heuresEtp - heuresAbs : null;
+
+  const ph = phoneIndex()[key];
+  const ad = ph ? ph.appels_decroches : null;
+  const dureeMin = ph ? hmsMin(ph.temps_total_conversation) : null;
+  const hAppelConv = dureeMin == null ? null : dureeMin / 60;
+  const hAppelSaisie = ad == null ? null : ad * T.saisieAppel / 60;
+  const hAppels = sumNN([hAppelConv, hAppelSaisie]);
+
+  const ch = chatIndex()[key];
+  const tc = ch ? ch.tchats_traites : null;
+  const hTchats = tc == null ? null : tc * T.tchat / 60;
+
+  const ml = mailDuMois(key);
+  const hMails = ml == null ? null : ml * T.mail / 60;
+
+  const tempsSol = sumNN([hAppels, hTchats, hMails]);
+
+  const plat = tfMoisDe(key), men = anDetailDe("harcelement_scolaire", key),
+        proc = anIpsDe("Procureur", key), crip = anIpsDe("CRIP", key), pharos = anDetailDe("pharos", key);
+  const hPlat = mulNN(plat, T.plat) == null ? null : plat * T.plat / 60;
+  const hMen = men == null ? null : men * T.men / 60;
+  const hProc = proc == null ? null : proc * T.art40 / 60;
+  const hCrip = crip == null ? null : crip * T.crip / 60;
+  const hPharos = pharos == null ? null : pharos * T.pharos / 60;
+  const hSport = null; /* Signal-Sports : n.d. */
+  const tempsSignal = sumNN([hPlat, hMen, hProc, hCrip, hPharos]);
+
+  const hReunions = eco == null ? null : eco * T.reunion;
+  const tempsAnnexes = sumNN([tempsSignal, hReunions]);
+  const total = sumNN([tempsSol, tempsAnnexes]);
+
+  return {
+    key: key, label: libelleCourt(key), etp: etp, etpPartiel: partiel, ecoutants: eco,
+    abs: ab, heuresEtp: heuresEtp, heuresAbs: heuresAbs, heuresApres: heuresApres,
+    sollicitations: solDuMois(key), solPartiel: String(solStatut(key)).indexOf("partiel") >= 0,
+    appels: ad, dureeMin: dureeMin, hAppelConv: hAppelConv, hAppelSaisie: hAppelSaisie, hAppels: hAppels,
+    tchats: tc, hTchats: hTchats, mails: ml, hMails: hMails, tempsSol: tempsSol,
+    plat: plat, men: men, proc: proc, crip: crip, pharos: pharos,
+    hPlat: hPlat, hMen: hMen, hProc: hProc, hCrip: hCrip, hPharos: hPharos, hSport: hSport,
+    tempsSignal: tempsSignal, hReunions: hReunions, tempsAnnexes: tempsAnnexes, total: total,
+  };
+}
+
+/* mois 2026 disponibles pour l'analyse de temps (téléphone présent) */
+function eaMoisDispo() {
+  const p = DATA.phone && DATA.phone.par_mois;
+  return p ? p.filter(m => String(m.mois).indexOf("2026") === 0).map(m => m.mois) : [];
+}
+
+/* liste de clés selon le filtre */
+function eaKeys() {
+  const all = eaMoisDispo();
+  if (EA_F.periode === "T1") return all.filter(k => ["2026-01", "2026-02", "2026-03"].indexOf(k) >= 0);
+  if (/^2026-\d\d$/.test(EA_F.periode)) return all.filter(k => k === EA_F.periode);
+  if (EA_F.periode === "perso") {
+    return all.filter(k => k >= EA_F.persoDe && k <= EA_F.persoA);
+  }
+  return all; /* cumul annuel à date */
+}
+
+/* agrégation d'une liste de mois */
+function eaAgg(keys) {
+  const rows = keys.map(eaMois);
+  const sum = f => sumNN(rows.map(r => r[f]));
+  const etpMoisComplets = rows.filter(r => r.etp != null && !r.etpPartiel);
+  const etpMoyen = etpMoisComplets.length ? Math.round(etpMoisComplets.reduce((s, r) => s + r.etp, 0) / etpMoisComplets.length * 100) / 100 : null;
+  const heuresEtp = sum("heuresEtp");
+  const heuresAbs = sum("heuresAbs");
+  const heuresApres = (heuresEtp != null && heuresAbs != null) ? heuresEtp - heuresAbs : null;
+  const sol = sum("sollicitations");
+  const solParEtp = (sol != null && etpMoyen) ? Math.round(sol / etpMoyen * 10) / 10 : null;
+  return {
+    rows: rows, etpMoyen: etpMoyen, heuresEtp: heuresEtp, heuresAbs: heuresAbs, heuresApres: heuresApres,
+    sollicitations: sol, solParEtp: solParEtp,
+    tempsSol: sum("tempsSol"), tempsAnnexes: sum("tempsAnnexes"), tempsSignal: sum("tempsSignal"),
+    hReunions: sum("hReunions"), total: sum("total"),
+    hAppels: sum("hAppels"), hAppelConv: sum("hAppelConv"), hAppelSaisie: sum("hAppelSaisie"),
+    hTchats: sum("hTchats"), hMails: sum("hMails"),
+    hPlat: sum("hPlat"), hMen: sum("hMen"), hProc: sum("hProc"), hCrip: sum("hCrip"), hPharos: sum("hPharos"),
+    appels: sum("appels"), tchats: sum("tchats"), mails: sum("mails"),
+    plat: sum("plat"), men: sum("men"), proc: sum("proc"), crip: sum("crip"), pharos: sum("pharos"),
+    partielSol: rows.some(r => r.solPartiel), nbMois: keys.length,
+  };
+}
+
+function eaPeriodeLabel() {
+  if (EA_F.periode === "T1") return "T1 2026 (janv.–mars)";
+  if (/^2026-\d\d$/.test(EA_F.periode)) return libelleCourt(EA_F.periode);
+  if (EA_F.periode === "perso") return libelleCourt(EA_F.persoDe) + " → " + libelleCourt(EA_F.persoA);
+  return "Cumul janv.–mai 2026";
+}
+
+/* badge observé / estimé */
+function tag(estime) { return estime ? ' <span class="ea-tag est" title="Donnée estimée à partir d\'un temps standard.">estimé</span>' : ' <span class="ea-tag obs" title="Donnée observée.">observé</span>'; }
+
+/* ====================== SYNTHÈSE : bloc simple ====================== */
+function blocEtpSynthese() {
+  const dmc = dernierMoisComplet();
+  if (!dmc || !DATA.etp) return "";
+  const etp = etpDe(dmc), sol = solDuMois(dmc);
+  const ratio = (sol != null && etp) ? Math.round(sol / etp * 10) / 10 : null;
+  let h = '<div class="bloc"><h3 class="bloc-titre">ETP et activité — ' + esc(libelleCourt(dmc)) + ' <span class="kpi-sub-inline">dernier mois complet</span></h3><div class="kpis">';
+  h += kpi("ETP", show(etp), esc(libelleCourt(dmc)), "primaire");
+  h += kpi("Sollicitations prises en charge", show(sol), esc(libelleCourt(dmc)), "accent");
+  h += kpi("Sollicitations par ETP", show(ratio), esc(libelleCourt(dmc)), "");
+  h += "</div>";
+  /* phrase d'évolution vs mois complet précédent, si possible */
+  const dispo = eaMoisDispo().filter(k => k < dmc && String(solStatut(k)).indexOf("partiel") < 0);
+  const prev = dispo.length ? dispo[dispo.length - 1] : null;
+  if (prev && sol != null && solDuMois(prev) != null) {
+    const solP = solDuMois(prev), diff = sol - solP;
+    const pct = solP ? Math.round(diff / solP * 1000) / 10 : null;
+    const sens = diff > 0 ? "en hausse" : (diff < 0 ? "en baisse" : "stable");
+    h += '<p class="intro">Sollicitations prises en charge ' + sens + " de " + nf(Math.abs(diff))
+      + (pct != null ? " (" + nf(Math.abs(pct)) + " %)" : "") + " par rapport à " + esc(libelleCourt(prev)) + ".</p>";
+  }
+  h += noteBox("Détail complet (heures, absences, activités annexes) dans l'onglet « ETP et activité ».");
+  h += "</div>";
+  return h;
+}
+
+/* ====================== MÉTHODOLOGIE : temps standards ====================== */
+function eaMethodologie() {
+  const c = cfgEA();
+  if (!DATA.workload) return "";
+  let h = '<div class="bloc"><h3 class="bloc-titre">ETP et activité — temps standards</h3>';
+  h += '<p class="intro">Ces temps servent à comparer les activités entre elles, et non à mesurer une performance individuelle. Modifiables dans data/workload_config.json.</p>';
+  h += '<ul class="liste-propre">';
+  h += "<li>1 ETP = " + show(c.heures_par_etp_mois) + " heures par mois (35 × 52 ÷ 12)</li>";
+  h += "<li>heures après absences = heures ETP − heures d'absence</li>";
+  h += "<li>appel = durée réelle ou moyenne + " + show(c.minutes_saisie_appel) + " minutes</li>";
+  h += "<li>tchat = " + show(c.minutes_tchat) + " minutes</li>";
+  h += "<li>mail = " + show(c.minutes_mail) + " minutes</li>";
+  h += "<li>MEN = " + show(c.minutes_men) + " minutes</li>";
+  h += "<li>plateforme = " + show(c.minutes_plateforme) + " minutes</li>";
+  h += "<li>Procureur / article 40 = " + show(c.minutes_article_40) + " minutes</li>";
+  h += "<li>IP / CRIP = " + show(c.minutes_ip_crip) + " minutes</li>";
+  h += "<li>Pharos = " + show(c.minutes_pharos) + " minutes</li>";
+  h += "<li>Signal-Sports = " + show(c.minutes_signal_sports) + " minutes (donnée actuellement n.d.)</li>";
+  h += "<li>réunions, interventions et supervisions = " + show(c.heures_reunions_par_ecoutant_mois) + " heures par mois et par écoutant</li>";
+  h += "</ul>";
+  h += noteBox("La formation figurant dans l'export d'absences est déduite des heures disponibles et n'est jamais recomptée dans les activités annexes.");
+  h += "</div>";
+  return h;
+}
+
+/* ====================== ONGLET : structure ====================== */
+function renderEtpActivite() {
+  if (!DATA.etp || !DATA.workload) return '<p class="intro">Données ETP / configuration indisponibles.</p>';
+  if (!eaMoisDispo().length) return '<p class="intro">Aucun mois d\'activité disponible.</p>';
+
+  let h = '<p class="intro">Pourquoi les sollicitations prises en charge peuvent baisser alors que les ETP augmentent : les activités annexes prennent une place croissante. On met ici côte à côte les ETP, les absences, les sollicitations et le temps consacré aux différentes activités.</p>';
+
+  /* 1. Filtres */
+  h += '<div class="bloc"><label class="filtre-label" for="ea-periode">Période</label> ';
+  h += '<select id="ea-periode" class="filtre-select">'
+    + '<option value="cumul">Cumul janv.–mai 2026</option>'
+    + '<option value="T1">Trimestre T1 (janv.–mars)</option>';
+  eaMoisDispo().forEach(k => { h += '<option value="' + k + '">' + esc(libelleCourt(k)) + "</option>"; });
+  h += '<option value="perso">Période personnalisée</option></select>';
+  h += '<span id="ea-perso" hidden> &nbsp;de <select id="ea-de" class="filtre-select">'
+    + eaMoisDispo().map(k => '<option value="' + k + '"' + (k === EA_F.persoDe ? " selected" : "") + ">" + esc(libelleCourt(k)) + "</option>").join("")
+    + '</select> à <select id="ea-a" class="filtre-select">'
+    + eaMoisDispo().map(k => '<option value="' + k + '"' + (k === EA_F.persoA ? " selected" : "") + ">" + esc(libelleCourt(k)) + "</option>").join("")
+    + "</select></span>";
+  h += "</div>";
+
+  /* zone recalculée (blocs 1,2,3) */
+  h += '<div id="ea-zone"></div>';
+
+  /* 4. Comparaison 2025 / 2026 (fixe, janv.–mai) */
+  h += eaComparaison();
+
+  /* 5. Absences (toute la période disponible) */
+  h += eaBlocAbsences();
+
+  /* 6. Limites */
+  h += '<div class="bloc"><h3 class="bloc-titre">Limites</h3>';
+  h += noteBox("Les temps affichés sont des estimations. Ils ne couvrent pas toutes les activités du service, notamment les pauses, la coordination, le management, les relances, les recherches, les validations, les incidents techniques et les autres tâches non mesurées.");
+  h += '<ul class="liste-propre">'
+    + "<li>février 2026 correspond au passage à Salesforce</li>"
+    + "<li>une partie des tchats entrants n'a pas été distribuée aux écoutants</li>"
+    + "<li>le nombre exact de tchats concernés n'est pas disponible</li>"
+    + "<li>certaines données de mai sont partielles</li>"
+    + "<li>juin 2026 est partiel</li></ul>";
+  h += noteBox("La différence entre les heures correspondant aux ETP et les heures mesurées ne doit pas être lue comme de l'inactivité : de nombreuses activités ne sont pas mesurées ici.");
+  h += "</div>";
+  return h;
+}
+
+/* ====================== zone recalculée selon la période ====================== */
+function eaFill() {
+  const zone = document.getElementById("ea-zone");
+  if (!zone) return;
+  const keys = eaKeys();
+  if (!keys.length) { zone.innerHTML = '<p class="intro">Aucune donnée pour cette période.</p>'; return; }
+  const A = eaAgg(keys);
+  let h = "";
+
+  /* --- Bloc 1 : vue d'ensemble --- */
+  h += '<div class="bloc"><h3 class="bloc-titre">Vue d\'ensemble — ' + esc(eaPeriodeLabel()) + "</h3><div class=\"kpis\">";
+  h += kpi("ETP" + (keys.length > 1 ? " (moyen)" : ""), show(A.etpMoyen), keys.length > 1 ? "moyenne des mois complets" : "", "primaire");
+  h += kpi("Heures correspondant aux ETP", fmtHe(A.heuresEtp), "ETP × 151,67 h", "");
+  h += kpi("Heures d'absence", fmtHe(A.heuresAbs), "Octime", "");
+  h += kpi("Heures après déduction des absences connues", fmtHe(A.heuresApres), "", "accent");
+  h += kpi("Sollicitations prises en charge", show(A.sollicitations) + (A.partielSol ? ' <span class="mini-badge part">partiel</span>' : ""), "", "primaire");
+  h += kpi("Temps consacré aux sollicitations", fmtHe(A.tempsSol), "appels + tchats + mails", "");
+  h += kpi("Temps consacré aux activités annexes", fmtHe(A.tempsAnnexes), "signalements" + (A.hReunions == null ? " (réunions n.d.)" : " + réunions"), "");
+  h += kpi("Total du temps représenté dans les données", fmtHe(A.total), "estimation partielle", "accent");
+  h += "</div>";
+  h += noteBox("« Heures correspondant aux ETP » et « heures après déduction des absences connues » ne sont pas une mesure de présence réelle : seules les absences présentes dans le fichier sont déduites.");
+  h += "</div>";
+
+  /* --- Bloc 2 : répartition du temps par activité --- */
+  h += '<div class="bloc"><h3 class="bloc-titre">Répartition du temps par activité</h3>';
+  h += '<div class="table-enveloppe"><table><thead><tr><th>Activité</th><th>Volume</th><th>Temps moyen retenu</th><th>Temps total (h)</th><th>Nature</th></tr></thead><tbody>';
+  function ligne(act, vol, moyen, heures, estime, ndNature) {
+    return "<tr><td style=\"text-align:left\">" + esc(act) + "</td>"
+      + "<td>" + (vol == null ? '<span class="nd">n.d.</span>' : vol) + "</td>"
+      + "<td>" + esc(moyen) + "</td>"
+      + "<td>" + fmtHe(heures) + "</td>"
+      + "<td style=\"text-align:left;font-size:12px\">" + (ndNature ? '<span class="nd">n.d.</span>' : (estime ? "estimé" : "observé")) + "</td></tr>";
+  }
+  h += '<tr class="vue-groupe"><td colspan="5">Temps consacré aux sollicitations</td></tr>';
+  h += ligne("Appels", A.appels == null ? null : show(A.appels) + " décrochés", "durée réelle ou moyenne + 10 min", A.hAppels, true);
+  h += ligne("Rédaction et saisie après appel", A.appels == null ? null : show(A.appels), "10 min / appel", A.hAppelSaisie, true);
+  h += ligne("Tchats", A.tchats == null ? null : show(A.tchats) + " traités", "30 min", A.hTchats, true);
+  h += ligne("Mails", A.mails == null ? null : show(A.mails) + " traités", "15 min", A.hMails, true);
+  h += '<tr class="vue-groupe"><td colspan="5">Temps consacré aux activités annexes</td></tr>';
+  h += ligne("Signalements plateformes", A.plat == null ? null : show(A.plat), "20 min", A.hPlat, true);
+  h += ligne("Signalements MEN", A.men == null ? null : show(A.men), "10 min", A.hMen, true);
+  h += ligne("Procureur / article 40", A.proc == null ? null : show(A.proc), "120 min", A.hProc, true);
+  h += ligne("IP / CRIP", A.crip == null ? null : show(A.crip), "105 min", A.hCrip, true);
+  h += ligne("Pharos", A.pharos == null ? null : show(A.pharos), "30 min", A.hPharos, true);
+  h += ligne("Signal-Sports", null, "20 min", null, true, true);
+  h += ligne("Réunions, interventions et supervisions", null, "5 h / écoutant", A.hReunions, true, A.hReunions == null);
+  h += '<tr style="font-weight:700;background:#fafbff"><td style="text-align:left">Total du temps représenté</td><td></td><td></td><td>' + fmtHe(A.total) + "</td><td></td></tr>";
+  h += "</tbody></table></div>";
+  h += noteBox("Signal-Sports : aucune donnée (n.d.). Réunions : n.d. tant que le nombre d'écoutants mensuel n'est pas renseigné (data/workforce_monthly.json).");
+  h += "</div>";
+
+  /* --- Bloc 3 : évolution mensuelle --- */
+  h += '<div class="bloc"><h3 class="bloc-titre">Évolution mensuelle</h3>';
+  h += '<div class="table-enveloppe"><table class="compact"><thead><tr>'
+    + "<th>Mois</th><th>ETP</th><th>Écoutants</th><th>Heures ETP</th><th>H. absence</th><th>H. après abs.</th>"
+    + "<th>Sollicit.</th><th>H. appels</th><th>H. tchats</th><th>H. mails</th><th>H. signal.</th><th>H. réunions</th><th>H. annexes</th><th>Total h</th></tr></thead><tbody>";
+  A.rows.forEach(r => {
+    h += "<tr><td style=\"text-align:left\">" + esc(r.label) + (r.etpPartiel ? ' <span class="mini-badge part">part.</span>' : "") + "</td>"
+      + td(r.etp) + (r.ecoutants == null ? '<td class="nd">n.d.</td>' : td(r.ecoutants))
+      + "<td>" + fmtHe(r.heuresEtp) + "</td><td>" + fmtHe(r.heuresAbs) + "</td><td>" + fmtHe(r.heuresApres) + "</td>"
+      + td(r.sollicitations) + "<td>" + fmtHe(r.hAppels) + "</td><td>" + fmtHe(r.hTchats) + "</td><td>" + fmtHe(r.hMails) + "</td>"
+      + "<td>" + fmtHe(r.tempsSignal) + "</td><td>" + fmtHe(r.hReunions) + "</td><td>" + fmtHe(r.tempsAnnexes) + "</td><td>" + fmtHe(r.total) + "</td></tr>";
+  });
+  h += "</tbody></table></div>";
+
+  /* deux graphiques simples (unités séparées) */
+  const labs = A.rows.map(r => r.label);
+  h += '<div class="ea-charts">';
+  h += '<div class="ea-chart"><h4 class="bloc-titre">ETP par mois</h4><div class="graph">'
+    + svgLineChart(labs, [{ name: "ETP", color: BLEU, data: A.rows.map(r => r.etp) }], "") + "</div>";
+  h += '<h4 class="bloc-titre">Sollicitations prises en charge par mois</h4><div class="graph">'
+    + svgLineChart(labs, [{ name: "Sollicitations", color: JAUNE, data: A.rows.map(r => r.sollicitations) }], "") + "</div></div>";
+  h += '<div class="ea-chart"><h4 class="bloc-titre">Heures : sollicitations et activités annexes</h4><div class="graph">'
+    + svgLineChart(labs, [
+        { name: "Sollicitations", color: BLEU, data: A.rows.map(r => h1(r.tempsSol)) },
+        { name: "Activités annexes", color: JAUNE, data: A.rows.map(r => h1(r.tempsAnnexes)) },
+      ], "") + "</div>"
+    + legende([{ label: "Sollicitations", color: BLEU }, { label: "Activités annexes", color: JAUNE }]) + "</div>";
+  h += "</div>";
+  h += noteBox("Les heures de réunions sont « n.d. » tant que le nombre d'écoutants n'est pas renseigné ; elles ne sont donc pas incluses dans les heures d'activités annexes ci-dessus.");
+  h += "</div>";
+
+  zone.innerHTML = h;
+}
+
+/* ====================== Bloc 4 : comparaison 2025 / 2026 (janv.–mai) ====================== */
+function histContactsTraites(annee, moisNum) {
+  try {
+    const arr = DATA.historical.series.contacts_traites[String(annee)];
+    return arr ? (arr[moisNum - 1] == null ? null : arr[moisNum - 1]) : null;
+  } catch (e) { return null; }
+}
+function eaComparaison() {
+  const moisN = [1, 2, 3, 4, 5];
+  /* 2026 : agrégat réel */
+  const A26 = eaAgg(moisKeys(2026, moisN).filter(k => eaMoisDispo().indexOf(k) >= 0));
+  /* ETP moyen */
+  const etp25 = etpMoyenne(moisKeys(2025, moisN)), etp26 = A26.etpMoyen;
+  /* absences */
+  const abs25 = sumNN(moisKeys(2025, moisN).map(k => { const a = absDuMois(k); return a ? a.total_heures_absence : null; }));
+  const abs26 = A26.heuresAbs;
+  /* heures ETP */
+  const hEtp25 = sumNN(moisKeys(2025, moisN).map(k => { const e = etpDe(k); return e == null ? null : e * heuresEtpMois(); }));
+  const hEtp26 = A26.heuresEtp;
+  const apres25 = (hEtp25 != null && abs25 != null) ? hEtp25 - abs25 : null;
+  const apres26 = A26.heuresApres;
+  /* sollicitations prises en charge */
+  const sol25 = sumNN(moisN.map(n => histContactsTraites(2025, n)));
+  const sol26 = A26.sollicitations;
+  const solEtp25 = (sol25 != null && etp25) ? Math.round(sol25 / etp25 * 10) / 10 : null;
+  const solEtp26 = A26.solParEtp;
+
+  function rowH(label, v25, v26, isHeure) {
+    const fmt = isHeure ? (x => fmtHe(x)) : (x => show(x));
+    let evo = '<td class="nd">n.d.</td>', pct = '<td class="nd">n.d.</td>';
+    if (v25 != null && v26 != null) {
+      const d = v26 - v25;
+      evo = "<td>" + (isHeure ? nf(h1(d)) + " h" : nf(Math.round(d * 10) / 10)) + "</td>";
+      pct = "<td>" + (v25 ? nf(Math.round(d / v25 * 1000) / 10) + " %" : '<span class="nd">n.d.</span>') + "</td>";
+    }
+    return "<tr><td style=\"text-align:left\">" + esc(label) + "</td><td>" + fmt(v25) + "</td><td>" + fmt(v26) + "</td>" + evo + pct + "</tr>";
+  }
+
+  let h = '<div class="bloc"><h3 class="bloc-titre">Comparaison 2025 / 2026 — janvier à mai</h3>';
+  h += '<div class="table-enveloppe"><table><thead><tr><th>Indicateur</th><th>janv.–mai 2025</th><th>janv.–mai 2026</th><th>Écart</th><th>Évolution</th></tr></thead><tbody>';
+  h += rowH("ETP moyen", etp25, etp26, false);
+  h += rowH("Heures correspondant aux ETP", hEtp25, hEtp26, true);
+  h += rowH("Heures d'absence", abs25, abs26, true);
+  h += rowH("Heures après absences", apres25, apres26, true);
+  h += rowH("Sollicitations prises en charge", sol25, sol26, false);
+  h += rowH("Sollicitations prises en charge par ETP", solEtp25, solEtp26, false);
+  h += rowH("Temps consacré aux sollicitations", null, A26.tempsSol, true);
+  h += rowH("Temps consacré aux activités annexes", null, A26.tempsAnnexes, true);
+  h += rowH("Temps consacré aux signalements et transmissions", null, A26.tempsSignal, true);
+  h += rowH("Temps consacré aux réunions, interventions et supervisions", null, A26.hReunions, true);
+  h += rowH("Total du temps représenté dans les données", null, A26.total, true);
+  h += "</tbody></table></div>";
+  h += noteBox("Pour 2025, le détail par canal et les durées d'appels ne sont pas disponibles : les temps en heures restent « n.d. » et aucune évolution n'est calculée. Les volumes (sollicitations) et les ETP/absences restent comparables.");
+
+  /* tableau mensuel 2025 / 2026 */
+  h += '<div class="table-enveloppe"><table class="compact"><thead><tr>'
+    + "<th>Mois</th><th>ETP 2025</th><th>ETP 2026</th><th>Sollicit. 2025</th><th>Sollicit. 2026</th>"
+    + "<th>H. absence 2025</th><th>H. absence 2026</th><th>H. annexes 2025</th><th>H. annexes 2026</th></tr></thead><tbody>";
+  const MN = ["janv.", "févr.", "mars", "avr.", "mai"];
+  moisN.forEach((n, i) => {
+    const k25 = "2025-" + String(n).padStart(2, "0"), k26 = "2026-" + String(n).padStart(2, "0");
+    const a25 = absDuMois(k25), a26 = absDuMois(k26);
+    const r26 = eaMoisDispo().indexOf(k26) >= 0 ? eaMois(k26) : null;
+    h += "<tr><td style=\"text-align:left\">" + MN[i] + "</td>"
+      + td(etpDe(k25)) + td(etpDe(k26))
+      + td(histContactsTraites(2025, n)) + td(r26 ? r26.sollicitations : null)
+      + "<td>" + fmtHe(a25 ? a25.total_heures_absence : null) + "</td><td>" + fmtHe(a26 ? a26.total_heures_absence : null) + "</td>"
+      + '<td class="nd">n.d.</td>' + "<td>" + fmtHe(r26 ? r26.tempsAnnexes : null) + "</td></tr>";
+  });
+  h += "</tbody></table></div>";
+  h += noteBox("Heures d'activités annexes 2025 : n.d. (le détail des transmissions 2025 regroupe CRIP/IP/procureur et n'est pas convertible avec les mêmes temps standards).");
+  h += "</div>";
+  return h;
+}
+
+/* ====================== Bloc 5 : absences ====================== */
+function eaBlocAbsences() {
+  const p = DATA.absences && DATA.absences.par_mois;
+  if (!p) return "";
+  const CATS = [["conges_payes", "Congés payés"], ["maladie", "Maladie"], ["rtt", "RTT"], ["maternite", "Maternité"],
+    ["formation", "Formation"], ["evenements_familiaux", "Événements familiaux"], ["recuperation", "Récupération"], ["autres", "Autres"]];
+  /* catégories réellement présentes (somme > 0 sur l'ensemble) */
+  const presentes = CATS.filter(([k]) => p.some(m => (m[k] || 0) > 0));
+
+  let h = '<div class="bloc"><h3 class="bloc-titre">Absences (en heures)</h3>';
+  h += '<p class="intro">Source : export Octime des absences en heures. Données non nominatives. Période disponible : ' + esc(libelleCourt(p[0].mois)) + " → " + esc(libelleCourt(p[p.length - 1].mois)) + ".</p>";
+  h += '<div class="table-enveloppe"><table class="compact"><thead><tr><th>Mois</th><th>Total h</th>'
+    + presentes.map(([, lab]) => "<th>" + esc(lab) + "</th>").join("")
+    + "<th>Personnes</th></tr></thead><tbody>";
+  p.forEach(m => {
+    h += "<tr><td style=\"text-align:left\">" + esc(libelleCourt(m.mois)) + (String(m.statut).indexOf("partiel") >= 0 ? ' <span class="mini-badge part">part.</span>' : "") + "</td>"
+      + "<td>" + fmtHe(m.total_heures_absence) + "</td>"
+      + presentes.map(([k]) => "<td>" + fmtHe(m[k]) + "</td>").join("")
+      + td(m.personnes_concernees) + "</tr>";
+  });
+  h += "</tbody></table></div>";
+  h += '<div class="graph">' + svgLineChart(p.map(m => libelleCourt(m.mois)), [{ name: "Absences", color: ROUGE, data: p.map(m => h1(m.total_heures_absence)) }], "") + "</div>";
+  h += noteBox("« Personnes » = nombre de personnes distinctes ayant au moins une absence dans le mois. Catégories affichées uniquement si présentes dans les données.");
+  h += "</div>";
+  return h;
+}

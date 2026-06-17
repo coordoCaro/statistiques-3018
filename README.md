@@ -3,8 +3,10 @@
 Application web pour consulter les statistiques d'activité du 3018 : synthèse,
 comparaison historique mensuelle (2024 / 2025 / 2026), sollicitations,
 performance des canaux (téléphone, tchat, mail), signalements Trusted Flagger,
-sorties d'anonymat, données BIK / Insafe et méthodologie. Les ETP théoriques
-contextualisent les ressources dans la synthèse et la comparaison historique.
+sorties d'anonymat, données BIK / Insafe et méthodologie. Un onglet « ETP et
+activité » met en regard les ETP, les absences et le temps consacré aux
+sollicitations et aux activités annexes. Les ETP n'apparaissent que dans
+« Synthèse » et « ETP et activité » (plus dans « Comparaison historique »).
 
 Elle est **statique** : pas de serveur, pas de base de données. Elle lit
 simplement des fichiers `.json` rangés dans `data/`. Aucune donnée personnelle
@@ -32,11 +34,14 @@ statistiques-3018/
     ├── anonymity_outputs.json
     ├── bik.json
     ├── methodology.json
-    └── etp.json
+    ├── etp.json
+    ├── absences_monthly.json     ← absences en heures (agrégées, non nominatives)
+    ├── workforce_monthly.json    ← nombre d'écoutants par mois
+    └── workload_config.json      ← temps standards + base ETP (à modifier ici)
 ```
 
 - **À la racine du dépôt :** `index.html`, `style.css`, `app.js`, `README.md`.
-- **Dans `data/` :** les 12 fichiers `.json`.
+- **Dans `data/` :** les fichiers `.json` (dont `absences_monthly.json`, `workforce_monthly.json`, `workload_config.json`).
 
 ---
 
@@ -45,7 +50,8 @@ statistiques-3018/
 | Section de l'application      | Fichier(s) JSON utilisé(s)                          |
 |-------------------------------|-----------------------------------------------------|
 | Synthèse                      | `annual_to_date.json`, `activity_monthly.json`, `anonymity_outputs.json`, `etp.json` |
-| Comparaison historique        | `historical_monthly.json`, `etp.json`               |
+| Comparaison historique        | `historical_monthly.json`                           |
+| ETP et activité               | `etp.json`, `absences_monthly.json`, `workforce_monthly.json`, `workload_config.json`, `activity_monthly.json`, `phone.json`, `chat.json`, `trusted_flagger.json`, `anonymity_outputs.json` |
 | Sollicitations                | `activity_monthly.json`, `activity_quarterly.json`, `historical_monthly.json` |
 | Performance des canaux        | `phone.json`, `chat.json`, `activity_monthly.json`  |
 | Signalements Trusted Flagger  | `trusted_flagger_2026.json` (tableau de bord dynamique) ; `trusted_flagger.json` (synthèse) |
@@ -62,16 +68,18 @@ statistiques-3018/
 ## 2 bis. Les ETP (`data/etp.json`)
 
 - **Source :** Octime — édition « Temps de base », champ **Temps dû initial**.
-- **Méthode :** ETP mensuel = total des heures de temps dû initial ÷ (nombre de
-  jours couverts × 5 heures).
+- **Méthode :** ETP mensuel issu des cycles Octime (Temps dû initial). La
+  référence est **35 h / semaine = 5 jours × 7 h** : le « 5 » est un nombre de
+  **jours par semaine**, pas un nombre d'heures par jour. Pour convertir un ETP
+  en heures de travail : **1 ETP = 151,67 h / mois** (35 × 52 ÷ 12).
 - **Nature :** ETP **théorique** issu des cycles de planning. Ce **n'est pas**
   une mesure de présence réelle, ni de productivité ou d'efficacité, ni un
   indicateur individuel.
 - **Période :** janvier 2025 → juin 2026. **Aucune valeur 2024** (affichée
   `n.d.`). **Juin 2026 partiel** (au 14/06) : jamais extrapolé en mois complet.
-- **Où les ETP apparaissent :** uniquement dans **Synthèse** (carte « ETP moyen »
-  janvier-mai) et **Comparaison historique** (ligne « ETP moyen » du tableau
-  « Vue d'ensemble — janvier à mai »). Ils n'apparaissent dans aucun autre onglet.
+- **Où les ETP apparaissent :** uniquement dans **Synthèse** (carte du dernier
+  mois complet) et **ETP et activité** (analyse détaillée). Ils n'apparaissent
+  **plus** dans « Comparaison historique » ni dans aucun autre onglet.
 - **Usage :** les ETP servent **uniquement à contextualiser les ressources
   globales**. Ce **n'est pas** une mesure de productivité : aucun ratio par ETP
   n'est affiché dans l'interface. Une donnée absente reste `n.d.`, jamais 0.
@@ -208,3 +216,50 @@ Les 12 fichiers JSON sont renseignés. Limites connues, détaillées dans l'ongl
 - **BIK / Insafe :** données déclaratives Q1 2026, présentées séparément.
 
 Aucun fichier n'est vide.
+
+---
+
+## Onglet « ETP et activité » (ajout)
+
+Cet onglet répond à une question : **pourquoi les sollicitations prises en charge
+peuvent baisser alors que les ETP augmentent ?** Il met côte à côte les ETP, les
+absences, les sollicitations et le temps consacré à chaque type d'activité, pour
+montrer que les **activités annexes** prennent une place croissante.
+
+### Fichiers qui l'alimentent
+- `etp.json` : ETP mensuels (1 ETP = 151,67 h / mois).
+- `absences_monthly.json` : absences **en heures**, agrégées par mois, **non
+  nominatives** (congés payés, maladie, RTT, maternité, formation, événements
+  familiaux, récupération, autres ; nombre de personnes concernées ; statut).
+- `workforce_monthly.json` : **nombre d'écoutants** par mois (pour le temps de
+  réunions = écoutants × 5 h). Tant qu'il n'est pas renseigné, les réunions
+  restent « n.d. ».
+- `workload_config.json` : **temps standards** et base ETP. **C'est ici qu'on
+  modifie** un temps (ex. minutes par tchat) sans toucher au code.
+
+### L'export Excel d'absences ne doit **pas** être publié
+Le fichier brut Octime (`R@CPT_MAN9_...XLSX`) contient des données nominatives :
+il ne doit **jamais** être déposé sur GitHub. Seul le fichier agrégé
+`absences_monthly.json` (non nominatif) est publié.
+
+### Mettre à jour le nombre d'écoutants
+À partir de l'export Octime des **présences** (postes ECO), compter chaque mois
+les **personnes distinctes** ayant au moins une ligne datée avec du temps
+planifié, validé ou réalisé (chaque personne une seule fois ; ne pas exclure une
+personne ayant eu des absences ; ne pas déduire l'effectif des ETP). Reporter le
+résultat dans `workforce_monthly.json` (`nombre_ecoutants`).
+
+### Temps standards (modifiables dans `workload_config.json`)
+appel = durée réelle ou moyenne + 10 min ; tchat = 30 min ; mail = 15 min ;
+MEN = 10 min ; plateforme = 20 min ; Procureur / article 40 = 120 min ;
+IP / CRIP = 105 min ; Pharos = 30 min ; Signal-Sports = 20 min (donnée n.d.) ;
+réunions = 5 h / mois / écoutant. Ces temps **comparent les activités**, ils ne
+mesurent pas une performance individuelle.
+
+### Règles
+- Une donnée absente reste **« n.d. »**, jamais 0 ; aucune évolution n'est
+  calculée si une valeur manque ; les mois partiels ne sont jamais extrapolés.
+- La **formation** figure dans les absences (déduite des heures disponibles) et
+  n'est jamais recomptée dans les activités annexes.
+- La différence entre heures ETP et heures mesurées **n'est pas** de
+  l'inactivité : beaucoup d'activités ne sont pas mesurées.

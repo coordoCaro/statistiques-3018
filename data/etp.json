@@ -3,29 +3,101 @@
     "titre": "ETP théoriques 3018",
     "source": "Octime — édition Temps de base",
     "indicateur": "Temps dû initial",
-    "methode": "ETP mensuel = total des heures de temps dû initial / (nombre de jours couverts × 5 heures)",
+    "methode": "ETP mensuel issu des cycles Octime (temps dû initial). Référence : 1 ETP = 35 heures par semaine = 5 jours de travail × 7 heures (le « 5 » est un nombre de jours par semaine, pas un nombre d'heures par jour). Conversion en heures dans l'onglet « ETP et activité » : 1 ETP = 151,67 heures par mois (35 × 52 ÷ 12).",
     "nature": "ETP théorique issu des cycles, et non temps de présence réelle",
     "periode": "janvier 2025 à juin 2026",
     "valeur_manquante": "Aucune valeur ETP pour 2024 (n.d.)."
   },
   "par_mois": [
-    { "mois": "2025-01", "etp": 14.42, "statut": "complet" },
-    { "mois": "2025-02", "etp": 15.89, "statut": "complet" },
-    { "mois": "2025-03", "etp": 15.85, "statut": "complet" },
-    { "mois": "2025-04", "etp": 17.22, "statut": "complet" },
-    { "mois": "2025-05", "etp": 18.28, "statut": "complet" },
-    { "mois": "2025-06", "etp": 15.90, "statut": "complet" },
-    { "mois": "2025-07", "etp": 14.20, "statut": "complet" },
-    { "mois": "2025-08", "etp": 12.12, "statut": "complet" },
-    { "mois": "2025-09", "etp": 15.96, "statut": "complet" },
-    { "mois": "2025-10", "etp": 17.68, "statut": "complet" },
-    { "mois": "2025-11", "etp": 17.63, "statut": "complet" },
-    { "mois": "2025-12", "etp": 17.82, "statut": "complet" },
-    { "mois": "2026-01", "etp": 17.63, "statut": "complet" },
-    { "mois": "2026-02", "etp": 16.96, "statut": "complet" },
-    { "mois": "2026-03", "etp": 17.33, "statut": "complet" },
-    { "mois": "2026-04", "etp": 17.06, "statut": "complet" },
-    { "mois": "2026-05", "etp": 18.41, "statut": "complet" },
-    { "mois": "2026-06", "etp": 17.90, "statut": "partiel au 14 juin 2026" }
+    {
+      "mois": "2025-01",
+      "etp": 14.42,
+      "statut": "complet"
+    },
+    {
+      "mois": "2025-02",
+      "etp": 15.89,
+      "statut": "complet"
+    },
+    {
+      "mois": "2025-03",
+      "etp": 15.85,
+      "statut": "complet"
+    },
+    {
+      "mois": "2025-04",
+      "etp": 17.22,
+      "statut": "complet"
+    },
+    {
+      "mois": "2025-05",
+      "etp": 18.28,
+      "statut": "complet"
+    },
+    {
+      "mois": "2025-06",
+      "etp": 15.9,
+      "statut": "complet"
+    },
+    {
+      "mois": "2025-07",
+      "etp": 14.2,
+      "statut": "complet"
+    },
+    {
+      "mois": "2025-08",
+      "etp": 12.12,
+      "statut": "complet"
+    },
+    {
+      "mois": "2025-09",
+      "etp": 15.96,
+      "statut": "complet"
+    },
+    {
+      "mois": "2025-10",
+      "etp": 17.68,
+      "statut": "complet"
+    },
+    {
+      "mois": "2025-11",
+      "etp": 17.63,
+      "statut": "complet"
+    },
+    {
+      "mois": "2025-12",
+      "etp": 17.82,
+      "statut": "complet"
+    },
+    {
+      "mois": "2026-01",
+      "etp": 17.63,
+      "statut": "complet"
+    },
+    {
+      "mois": "2026-02",
+      "etp": 16.96,
+      "statut": "complet"
+    },
+    {
+      "mois": "2026-03",
+      "etp": 17.33,
+      "statut": "complet"
+    },
+    {
+      "mois": "2026-04",
+      "etp": 17.06,
+      "statut": "complet"
+    },
+    {
+      "mois": "2026-05",
+      "etp": 18.41,
+      "statut": "complet"
+    },
+    {
+      "mois": "2026-06",
+      "etp": 17.9,
+      "statut": "partiel au 14 juin 2026"
+    }
   ]
 }

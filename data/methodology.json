@@ -210,9 +210,9 @@
   "etp": {
     "source": "Octime — édition Temps de base",
     "champ_retenu": "Temps dû initial",
-    "formule": "total des heures de temps dû initial / (nombre de jours couverts × 5 heures)",
+    "formule": "1 ETP = 151,67 heures par mois (35 heures par semaine × 52 ÷ 12). Le « 5 » de l'ancienne note correspondait à 5 jours par semaine, et non à 5 heures par jour.",
     "nature": "ETP théorique issu des cycles",
-    "usage": "Les ETP servent uniquement à contextualiser les ressources globales (synthèse et comparaison historique) ; ils ne constituent pas une mesure de productivité ni un indicateur individuel.",
+    "usage": "Les ETP n'apparaissent que dans « Synthèse » (dernier mois complet) et « ETP et activité » (analyse détaillée). Ils ne constituent ni une mesure de productivité ni un indicateur individuel.",
     "limites": [
       "ne mesure pas la présence réelle",
       "ne mesure pas le temps exclusivement consacré à l'écoute",

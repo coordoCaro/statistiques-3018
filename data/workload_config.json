@@ -1,0 +1,25 @@
+{
+  "_meta": {
+    "role": "Configuration centralisée des temps standards et de la base ETP pour l'onglet « ETP et activité ». Modifier ici sans toucher au code.",
+    "nature": "Temps standards = estimations forfaitaires servant à comparer les activités entre elles, et non à mesurer une performance individuelle. Seules la durée des appels (3CX) et les absences (Octime) sont des données observées."
+  },
+  "heures_par_etp_mois": 151.67,
+  "minutes_saisie_appel": 10,
+  "minutes_tchat": 30,
+  "minutes_mail": 15,
+  "minutes_men": 10,
+  "minutes_plateforme": 20,
+  "minutes_article_40": 120,
+  "minutes_ip_crip": 105,
+  "minutes_pharos": 30,
+  "minutes_signal_sports": 20,
+  "heures_reunions_par_ecoutant_mois": 5,
+  "mentions": {
+    "tchat": "Estimation : 30 minutes par tchat traité.",
+    "mail": "Estimation : 15 minutes par mail traité.",
+    "appel": "Durée réelle ou moyenne + 10 minutes de rédaction, qualification et saisie.",
+    "reunions": "Réunions, interventions et supervisions : 5 heures par mois et par écoutant (forfait).",
+    "procureur": "La catégorie « Procureur » correspond aux transmissions au titre de l'article 40 du code de procédure pénale.",
+    "signal_sports": "Aucune donnée Signal-Sports dans les fichiers actuels : affiché « n.d. », jamais zéro."
+  }
+}

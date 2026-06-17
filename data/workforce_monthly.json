@@ -1,0 +1,27 @@
+{
+  "_meta": {
+    "role": "Effectif mensuel d'écoutants (personnes distinctes), utilisé pour le temps « réunions, interventions et supervisions » (nombre d'écoutants × 5 h).",
+    "source_attendue": "Export Octime des présences/plannings (postes ECO), ex. R@CPT_MAN9_..._présences.XLSX : compter les personnes distinctes ayant au moins une ligne datée avec du temps planifié, validé ou réalisé dans le mois (chaque personne une seule fois ; ne pas exclure une personne ayant eu des absences ; ne pas déduire l'effectif des ETP).",
+    "statut_actuel": "Export de présences non fourni à ce jour : nombre_ecoutants = null (affiché « n.d. »). Le temps de réunions reste « n.d. » tant que ce fichier n'est pas renseigné."
+  },
+  "par_mois": [
+    { "mois": "2025-01", "nombre_ecoutants": null, "statut": "n.d." },
+    { "mois": "2025-02", "nombre_ecoutants": null, "statut": "n.d." },
+    { "mois": "2025-03", "nombre_ecoutants": null, "statut": "n.d." },
+    { "mois": "2025-04", "nombre_ecoutants": null, "statut": "n.d." },
+    { "mois": "2025-05", "nombre_ecoutants": null, "statut": "n.d." },
+    { "mois": "2025-06", "nombre_ecoutants": null, "statut": "n.d." },
+    { "mois": "2025-07", "nombre_ecoutants": null, "statut": "n.d." },
+    { "mois": "2025-08", "nombre_ecoutants": null, "statut": "n.d." },
+    { "mois": "2025-09", "nombre_ecoutants": null, "statut": "n.d." },
+    { "mois": "2025-10", "nombre_ecoutants": null, "statut": "n.d." },
+    { "mois": "2025-11", "nombre_ecoutants": null, "statut": "n.d." },
+    { "mois": "2025-12", "nombre_ecoutants": null, "statut": "n.d." },
+    { "mois": "2026-01", "nombre_ecoutants": null, "statut": "n.d." },
+    { "mois": "2026-02", "nombre_ecoutants": null, "statut": "n.d." },
+    { "mois": "2026-03", "nombre_ecoutants": null, "statut": "n.d." },
+    { "mois": "2026-04", "nombre_ecoutants": null, "statut": "n.d." },
+    { "mois": "2026-05", "nombre_ecoutants": null, "statut": "n.d." },
+    { "mois": "2026-06", "nombre_ecoutants": null, "statut": "partiel au 16/06/2026" }
+  ]
+}
