@@ -172,6 +172,12 @@ function renderSynthese() {
   if (!a) return '<p class="intro">Données indisponibles.</p>';
   let h = "";
 
+  /* Export Excel — boutons accessibles dès la Synthèse. */
+  h += '<div class="bloc export-actions">'
+    + '<button id="btn-export-complet" class="bouton">Exporter toutes les données</button>'
+    + '<button id="btn-export-perso" class="bouton bouton-secondaire">Créer un export personnalisé</button>'
+    + '</div>';
+
   /* Hero — cumul annuel à date */
   h += '<div class="kpis hero">';
   h += kpi("Appels décrochés", show(a.telephone && a.telephone.appels_decroches), (a.telephone && a.telephone.periode) || "", "primaire");
@@ -885,6 +891,10 @@ const RENDERERS = {
 /* ---------------- Interactions après rendu ---------------- */
 function brancherInteractions(id) {
   if (id === "synthese") {
+    const bExpAll = document.getElementById("btn-export-complet");
+    if (bExpAll) bExpAll.addEventListener("click", exportComplet);
+    const bExpPerso = document.getElementById("btn-export-perso");
+    if (bExpPerso) bExpPerso.addEventListener("click", ouvrirModalExport);
     const btn = document.getElementById("btn-copier");
     if (btn) btn.addEventListener("click", () => {
       const txt = texteSynthese();
@@ -2141,4 +2151,847 @@ function eaBlocAbsences() {
   h += noteBox("« Personnes » = nombre de personnes distinctes ayant au moins une absence dans le mois. Catégories affichées uniquement si présentes dans les données.");
   h += "</div>";
   return h;
+}
+
+
+/* =================================================================
+   EXPORT EXCEL (.xlsx) — bloc AJOUTÉ à la fin de app.js
+   -----------------------------------------------------------------
+   Rien de l'application existante n'est modifié : ce bloc ne fait
+   qu'AJOUTER des fonctions. Il a besoin de la bibliothèque SheetJS
+   (fichier vendor/xlsx.full.min.js), chargée dans index.html AVANT
+   app.js : elle fournit la variable globale « XLSX ».
+
+   Deux points d'entrée, appelés par les deux boutons de la Synthèse :
+     - exportComplet()        -> un fichier Excel avec TOUTES les données.
+     - ouvrirModalExport()    -> la fenêtre « export personnalisé ».
+
+   Règles respectées partout :
+     - une donnée absente s'écrit « n.d. » (jamais 0, jamais inventée) ;
+     - les nombres sont écrits comme des nombres ;
+     - les pourcentages comme de vrais pourcentages (format 0,0 %) ;
+     - les calculs (cumuls, parts, moyennes) sont refaits UNIQUEMENT
+       sur la période demandée.
+   ================================================================= */
+
+/* ---------- petites aides de période / date ---------- */
+var EXP_MOIS_LONG = { "01": "janvier", "02": "février", "03": "mars", "04": "avril",
+  "05": "mai", "06": "juin", "07": "juillet", "08": "août", "09": "septembre",
+  "10": "octobre", "11": "novembre", "12": "décembre" };
+
+function expLabelMois(ym) { // "2025-10" -> "octobre 2025"
+  var p = String(ym).split("-");
+  return (EXP_MOIS_LONG[p[1]] || p[1]) + " " + p[0];
+}
+function expListeMois(deYM, aYM) { // bornes incluses -> ["2025-10", ... ]
+  var out = [], a = deYM.split("-"), b = aYM.split("-");
+  var y = +a[0], m = +a[1], yb = +b[0], mb = +b[1];
+  while (y < yb || (y === yb && m <= mb)) {
+    out.push(y + "-" + String(m).padStart(2, "0"));
+    m++; if (m > 12) { m = 1; y++; }
+  }
+  return out;
+}
+function expAujourdhui() {
+  var d = new Date();
+  var jj = String(d.getDate()).padStart(2, "0");
+  var mm = String(d.getMonth() + 1).padStart(2, "0");
+  var aaaa = d.getFullYear();
+  return { iso: aaaa + "-" + mm + "-" + jj, fr: jj + "/" + mm + "/" + aaaa };
+}
+
+/* Marqueur « pourcentage » : on enveloppe une valeur en % pour que le
+   tableur l'enregistre comme un vrai pourcentage. Renvoie « n.d. » si vide. */
+function PCT(x) { return (x === null || x === undefined) ? "n.d." : { __pct: x }; }
+/* Nombre simple ou « n.d. ». */
+function NUM(x) { return (x === null || x === undefined) ? "n.d." : x; }
+
+/* ---------- accès aux données mois par mois (null si absent) ---------- */
+function expMapMois(arr, cle) { // tableau d'objets -> { "2026-01": objet }
+  var m = {};
+  (arr || []).forEach(function (o) { m[o[cle || "mois"]] = o; });
+  return m;
+}
+function expHistVal(seriesObj, ym) { // séries historiques { 2024:[12], 2025:[12], 2026:[12] }
+  if (!seriesObj) return null;
+  var y = ym.slice(0, 4), i = parseInt(ym.slice(5, 7), 10) - 1;
+  if (!seriesObj[y]) return null;
+  var v = seriesObj[y][i];
+  return (v === undefined ? null : v);
+}
+
+/* Construit, une fois, des index pratiques à partir de DATA. */
+function expIndex() {
+  var A = DATA.monthly || {}, P = DATA.phone || {}, C = DATA.chat || {};
+  var H = DATA.historical || {}, TF = DATA.flagger || {}, AN = DATA.anonymity || {};
+  var E = DATA.etp || {}, AB = DATA.absences || {}, WF = DATA.workforce || {};
+  var idx = {
+    act: expMapMois(A.mois),                                   // 2026-01..05
+    phone: expMapMois(P.par_mois),                             // 2026-01..05
+    chat: expMapMois(C.par_mois),                              // 2026-02..05
+    mails: expMapMois(((A.activite_traitee_tous_canaux || {}).par_mois) || []), // 2026-02..05 (+janv null)
+    tf: expMapMois(TF.par_mois_2026),                          // 2026-01..06
+    sor: expMapMois(AN.par_mois_2026),                         // 2026-01..06
+    etp: expMapMois(E.par_mois),                               // 2025-01..2026-06
+    abs: expMapMois(AB.par_mois),                              // 2025-01..2026-06
+    wf: expMapMois(WF.par_mois),                               // effectif (null partout pour l'instant)
+    histContacts: (H.series || {}).contacts_traites,
+    histSollic: (H.series || {}).sollicitations,
+    histTaux: (H.series || {}).taux_reponse_global_pct,
+    histSignal: (((H.protection || {}).series) || {}).signalements_plateformes,
+  };
+  return idx;
+}
+
+/* Contacts traités (tous canaux) pour un mois : 2026 via le tableau mensuel,
+   2025 via la série historique. null sinon. */
+function expContactsTraites(I, ym) {
+  if (I.act[ym] && I.act[ym].volume_activite_traite != null) return I.act[ym].volume_activite_traite;
+  return expHistVal(I.histContacts, ym);
+}
+function expSollicitations(I, ym) {
+  if (I.act[ym] && I.act[ym].sollicitations_entrantes != null) return I.act[ym].sollicitations_entrantes;
+  return expHistVal(I.histSollic, ym);
+}
+function expSignalements(I, ym) {
+  if (I.tf[ym] && I.tf[ym].signalements != null) return I.tf[ym].signalements;
+  return expHistVal(I.histSignal, ym); // 2024/2025
+}
+function expSorties(I, ym) { return I.sor[ym] ? I.sor[ym].sorties : null; }
+function expAppels(I, ym) { // {recus, decroches, abandonnes, taux}
+  var o = I.phone[ym] || I.act[ym];
+  if (!o) return null;
+  return {
+    recus: o.appels_recus != null ? o.appels_recus : null,
+    decroches: o.appels_decroches != null ? o.appels_decroches : null,
+    abandonnes: o.appels_abandonnes != null ? o.appels_abandonnes : null,
+    taux: o.taux_reponse_pct != null ? o.taux_reponse_pct : (o.taux_reponse_appels_pct != null ? o.taux_reponse_appels_pct : null),
+  };
+}
+function expTchat(I, ym) {
+  var o = I.chat[ym] || I.act[ym];
+  if (!o) return null;
+  return {
+    recus: o.tchats_recus != null ? o.tchats_recus : null,
+    traites: o.tchats_traites != null ? o.tchats_traites : null,
+    abandonnes: o.tchats_abandonnes != null ? o.tchats_abandonnes : null,
+    taux: o.taux_prise_pct != null ? o.taux_prise_pct : (o.taux_prise_tchat_pct != null ? o.taux_prise_tchat_pct : null),
+  };
+}
+function expMails(I, ym) {
+  var o = I.mails[ym];
+  return (o && o.mails != null) ? o.mails : null;
+}
+function expEtp(I, ym) { return I.etp[ym] ? I.etp[ym].etp : null; }
+
+/* Somme « prudente » : null si AUCUNE valeur disponible ; sinon somme des
+   valeurs présentes (les mois absents ne sont pas comptés comme 0). */
+function expSomme(vals) {
+  var presentes = vals.filter(function (v) { return v != null; });
+  if (presentes.length === 0) return null;
+  return presentes.reduce(function (a, b) { return a + b; }, 0);
+}
+function expArr1(x) { return (x == null) ? null : Math.round(x * 10) / 10; }
+function expPart(part, total) { // part en % (1 décimale) ou null
+  if (part == null || total == null || total === 0) return null;
+  return Math.round(part / total * 1000) / 10;
+}
+
+/* =================================================================
+   Construction d'une FEUILLE à partir d'un tableau de lignes (AOA).
+   Chaque cellule peut être : un texte, un nombre, null (-> « n.d. »),
+   ou { __pct: x } (-> vrai pourcentage). Options : filtre auto.
+   ================================================================= */
+function expFeuille(rows, opts) {
+  opts = opts || {};
+  var plain = [];          // version « brute » donnée à SheetJS
+  var pctCells = [];       // adresses des cellules en pourcentage
+  var largeurs = [];
+
+  rows.forEach(function (row, r) {
+    var ligne = [];
+    (row || []).forEach(function (cell, c) {
+      var valeur, longueurAffichee;
+      if (cell && typeof cell === "object" && cell.__pct !== undefined) {
+        valeur = cell.__pct / 100;                 // 21,2 -> 0,212
+        pctCells.push({ r: r, c: c });
+        longueurAffichee = String(cell.__pct).length + 2; // "54,0 %"
+      } else if (cell === null || cell === undefined) {
+        valeur = "n.d.";
+        longueurAffichee = 4;
+      } else {
+        valeur = cell;
+        longueurAffichee = String(cell).length;
+      }
+      ligne.push(valeur);
+      largeurs[c] = Math.max(largeurs[c] || 8, Math.min(60, longueurAffichee + 2));
+    });
+    plain.push(ligne);
+  });
+
+  var ws = XLSX.utils.aoa_to_sheet(plain);
+  ws["!cols"] = largeurs.map(function (w) { return { wch: w }; });
+
+  // format pourcentage sur les cellules repérées
+  pctCells.forEach(function (p) {
+    var ad = XLSX.utils.encode_cell({ r: p.r, c: p.c });
+    if (ws[ad] && ws[ad].t === "n") ws[ad].z = "0.0%";
+  });
+
+  // filtre automatique (si demandé et si la feuille est un seul tableau)
+  if (opts.filtre) {
+    var ref = XLSX.utils.decode_range(ws["!ref"]);
+    var ligneEntete = opts.ligneEntete || 0;
+    ws["!autofilter"] = {
+      ref: XLSX.utils.encode_range(
+        { r: ligneEntete, c: ref.s.c },
+        { r: ref.e.r, c: ref.e.c })
+    };
+  }
+  return ws;
+}
+
+/* Nettoie un nom d'onglet (Excel : 31 caractères max, pas de : \ / ? * [ ]). */
+function expNomOnglet(nom) {
+  return String(nom).replace(/[:\\\/\?\*\[\]]/g, " ").slice(0, 31);
+}
+function expAjouter(wb, nom, ws) {
+  XLSX.utils.book_append_sheet(wb, ws, expNomOnglet(nom));
+}
+
+/* =================================================================
+   FEUILLES — chacune renvoie une worksheet prête à ajouter.
+   ================================================================= */
+function feuilleSynthese(I) {
+  var an = DATA.annual || {}, t = an.telephone || {}, c = an.tchat || {},
+      s = an.signalements_trusted_flagger || {}, so = an.sorties_anonymat || {},
+      v = an.volume_activite_traite || {}, sr = an.sollicitations_recues || {};
+  var meta = (DATA.methodology || {})._meta || {};
+  var rows = [
+    ["Reporting interne 3018 — export complet"],
+    ["Date de génération", expAujourdhui().fr],
+    ["Période des données", meta.periode_couverte || (an._meta && an._meta.arret ? ("cumul 2026 au " + an._meta.arret) : "n.d.")],
+    ["Avertissement", "Année incomplète. Données BIK déclaratives séparées. Aucune donnée personnelle."],
+    [],
+    ["Indicateur", "Valeur", "Période", "Source / note"],
+    ["Appels décrochés (cumul)", NUM(t.appels_decroches), t.periode || "", "3CX"],
+    ["Appels reçus (cumul)", NUM(t.appels_recus), t.periode || "", "3CX"],
+    ["Taux de réponse téléphone", PCT(t.taux_reponse_pct), t.periode || "", "décrochés / reçus"],
+    ["Tchats traités (cumul)", NUM(c.tchats_traites), c.periode || "", "export tchat"],
+    ["Tchats reçus (cumul)", NUM(c.tchats_recus), c.periode || "", "export tchat"],
+    ["Signalements Trusted Flagger", NUM(s.total), s.periode || "", "Signalements RS"],
+    ["Sorties d'anonymat", NUM(so.total), so.periode || "", "Sorties d'anonymat"],
+    ["Activité traitée tous canaux (cumul)", NUM(v.cumul_janv_mai), "janv.–mai 2026", "appels décrochés + tchats traités + mails"],
+    ["Sollicitations reçues (cumul)", NUM(sr.cumul_janv_mai), "janv.–mai 2026", "appels reçus + tchats reçus + mails"],
+  ];
+  return expFeuille(rows);
+}
+
+function feuilleMensuelle(I, mois) {
+  var liste = mois || Object.keys(I.act).sort();
+  var rows = [["Mois", "Appels reçus", "Appels décrochés", "Taux réponse appels",
+    "Tchats reçus", "Tchats traités", "Taux prise tchat", "Activité traitée tous canaux",
+    "Signalements TF", "Sorties anonymat", "Observation"]];
+  liste.forEach(function (ym) {
+    var a = I.act[ym]; if (!a) {
+      rows.push([expLabelMois(ym), null, null, "n.d.", null, null, "n.d.", expContactsTraites(I, ym), expSignalements(I, ym), expSorties(I, ym), "données mensuelles détaillées absentes"]);
+      return;
+    }
+    rows.push([
+      a.libelle || expLabelMois(ym),
+      NUM(a.appels_recus), NUM(a.appels_decroches), PCT(a.taux_reponse_appels_pct),
+      NUM(a.tchats_recus), NUM(a.tchats_traites), PCT(a.taux_prise_tchat_pct),
+      NUM(a.volume_activite_traite), NUM(a.signalements_trusted_flagger), NUM(a.sorties_anonymat),
+      a.observation || ""
+    ]);
+  });
+  return expFeuille(rows, { filtre: true });
+}
+
+function feuilleTrimestrielle() {
+  var q = (DATA.quarterly || {}).trimestres || [];
+  var rows = [["Trimestre", "Statut", "Appels reçus", "Appels décrochés", "Taux réponse",
+    "Tchats reçus", "Tchats traités", "Signalements TF", "Sorties anonymat",
+    "Activité traitée", "Sollicitations reçues", "Observation"]];
+  q.forEach(function (o) {
+    rows.push([
+      o.trimestre, o.statut,
+      NUM(o.appels_recus != null ? o.appels_recus : o.appels_recus_avril_mai),
+      NUM(o.appels_decroches != null ? o.appels_decroches : o.appels_decroches_avril_mai),
+      PCT(o.taux_reponse_appels_pct != null ? o.taux_reponse_appels_pct : o.taux_reponse_appels_avril_mai_pct),
+      NUM(o.tchats_recus != null ? o.tchats_recus : o.tchats_recus_avril_mai),
+      NUM(o.tchats_traites != null ? o.tchats_traites : o.tchats_traites_avril_mai),
+      NUM(o.signalements_trusted_flagger != null ? o.signalements_trusted_flagger : o.signalements_trusted_flagger_avril_mai),
+      NUM(o.sorties_anonymat != null ? o.sorties_anonymat : o.sorties_anonymat_avril_mai),
+      NUM(o.volume_activite_traite != null ? o.volume_activite_traite : o.volume_activite_traite_avril_mai),
+      NUM(o.sollicitations_recues != null ? o.sollicitations_recues : o.sollicitations_recues_avril_mai),
+      o.observation || (o.tchat_note || "")
+    ]);
+  });
+  return expFeuille(rows, { filtre: true });
+}
+
+function feuilleAnnuelle() {
+  var an = DATA.annual || {}, t = an.telephone || {}, c = an.tchat || {},
+      s = an.signalements_trusted_flagger || {}, so = an.sorties_anonymat || {},
+      v = an.volume_activite_traite || {}, sr = an.sollicitations_recues || {};
+  var d = v.detail_fev_mai || {}, dr = sr.detail_fev_mai || {};
+  var rows = [
+    ["Cumul annuel à date — 2026 (" + (an._meta ? ("arrêté au " + an._meta.arret) : "") + ")"],
+    [],
+    ["Indicateur", "Valeur", "Période", "Note"],
+    ["Appels reçus", NUM(t.appels_recus), t.periode || "", ""],
+    ["Appels décrochés", NUM(t.appels_decroches), t.periode || "", ""],
+    ["Appels abandonnés", NUM(t.appels_abandonnes), t.periode || "", ""],
+    ["Taux de réponse téléphone", PCT(t.taux_reponse_pct), t.periode || "", "décrochés / reçus"],
+    ["Tchats reçus", NUM(c.tchats_recus), c.periode || "", ""],
+    ["Tchats traités", NUM(c.tchats_traites), c.periode || "", ""],
+    ["Taux de prise tchat", PCT(c.taux_prise_pct), c.periode || "", "traités / reçus"],
+    ["Signalements Trusted Flagger", NUM(s.total), s.periode || "", ""],
+    ["Sorties d'anonymat", NUM(so.total), so.periode || "", ""],
+    ["Activité traitée tous canaux (cumul)", NUM(v.cumul_janv_mai), "janv.–mai 2026", v.definition || ""],
+    ["  dont janvier (tous canaux)", NUM(v.janvier_tous_canaux), "janv. 2026", "tableau d'activité"],
+    ["  dont appels décrochés (fév.–mai)", NUM(d.appels_decroches), "fév.–mai 2026", "reconstruit"],
+    ["  dont tchats traités (fév.–mai)", NUM(d.tchats_traites), "fév.–mai 2026", "reconstruit"],
+    ["  dont mails (fév.–mai)", NUM(d.mails), "fév.–mai 2026", "mai partiel (26/05)"],
+    ["Sollicitations reçues (cumul)", NUM(sr.cumul_janv_mai), "janv.–mai 2026", sr.definition || ""],
+    ["  dont appels reçus 3CX (fév.–mai)", NUM(dr.appels_recus_3cx), "fév.–mai 2026", ""],
+    ["  dont tchats reçus (fév.–mai)", NUM(dr.tchats_recus), "fév.–mai 2026", ""],
+    ["  dont mails (fév.–mai)", NUM(dr.mails), "fév.–mai 2026", ""],
+  ];
+  return expFeuille(rows);
+}
+
+function feuilleTelephone(I, mois) {
+  var liste = mois || Object.keys(I.phone).sort();
+  var rows = [["Mois", "Appels reçus", "Appels décrochés", "Appels abandonnés",
+    "Taux de réponse", "Temps total conversation", "Durée moyenne appel"]];
+  liste.forEach(function (ym) {
+    var o = I.phone[ym]; if (!o) return;
+    rows.push([expLabelMois(ym), NUM(o.appels_recus), NUM(o.appels_decroches),
+      NUM(o.appels_abandonnes), PCT(o.taux_reponse_pct),
+      o.temps_total_conversation || "n.d.", o.duree_moyenne_appel || "n.d."]);
+  });
+  // répartition par file (toute la période)
+  var files = (DATA.phone || {}).par_file_periode || [];
+  if (files.length) {
+    rows.push([]);
+    rows.push(["Répartition par file (cumul période)"]);
+    rows.push(["File 3CX", "Libellé", "Rôle supposé", "Incluse au total ?", "Appels reçus", "Appels décrochés", "Appels abandonnés"]);
+    files.forEach(function (f) {
+      rows.push([f.file_3cx, f.libelle, f.role_suppose, f.incluse_total ? "oui" : "non",
+        NUM(f.appels_recus), NUM(f.appels_decroches), NUM(f.appels_abandonnes)]);
+    });
+  }
+  return expFeuille(rows, { filtre: true });
+}
+
+function feuilleTchat(I, mois) {
+  var liste = mois || Object.keys(I.chat).sort();
+  var rows = [["Mois", "Tchats reçus", "Tchats traités", "Tchats abandonnés", "Taux de prise"]];
+  liste.forEach(function (ym) {
+    var o = I.chat[ym]; if (!o) return;
+    rows.push([expLabelMois(ym), NUM(o.tchats_recus), NUM(o.tchats_traites),
+      NUM(o.tchats_abandonnes), PCT(o.taux_prise_pct)]);
+  });
+  var sp = (DATA.chat || {}).synthese_periode;
+  if (sp) {
+    rows.push([]);
+    rows.push(["Synthèse période (" + ((DATA.chat || {})._meta || {}).periode + ")"]);
+    rows.push(["Tchats reçus", NUM(sp.tchats_recus)]);
+    rows.push(["Tchats traités", NUM(sp.tchats_traites)]);
+    rows.push(["Taux de prise", PCT(sp.taux_prise_pct)]);
+    rows.push(["Attente médiane (min)", NUM(sp.attente_mediane_min)]);
+    rows.push(["Durée médiane session (min)", NUM(sp.duree_mediane_session_min)]);
+    rows.push(["Périmètre", "tchats web et application 3018 non distingués dans les sources"]);
+  }
+  return expFeuille(rows, { filtre: true });
+}
+
+function feuilleTrustedFlagger() {
+  var tf = DATA.flagger || {};
+  var rows = [["Signalements Trusted Flagger — 2026"], [],
+    ["Total 2026", NUM(tf.total_2026)], ["Cumul janv.–mai 2026", NUM(tf.cumul_janvier_mai_2026)], []];
+  rows.push(["Par mois", "Signalements", "Statut"]);
+  (tf.par_mois_2026 || []).forEach(function (o) { rows.push([expLabelMois(o.mois), NUM(o.signalements), o.statut]); });
+  rows.push([]);
+  rows.push(["Par plateforme", "Signalements"]);
+  (tf.par_plateforme || []).forEach(function (o) { rows.push([o.plateforme, NUM(o.signalements)]); });
+  rows.push([]);
+  rows.push(["Par type de contenu", "Signalements"]);
+  (tf.par_type_contenu || []).forEach(function (o) { rows.push([o.type, NUM(o.signalements)]); });
+  rows.push([]);
+  rows.push(["Par décision plateforme", "Signalements"]);
+  (tf.par_decision || []).forEach(function (o) { rows.push([o.decision, NUM(o.signalements)]); });
+  var ii = tf.indicateurs_issue;
+  if (ii) {
+    rows.push([]);
+    rows.push(["Indicateurs d'issue (indicatif)", ""]);
+    rows.push(["Suppressions (indicatif)", NUM(ii.suppressions_indicatif)]);
+    rows.push(["Refus / non violation (indicatif)", NUM(ii.refus_non_violation_indicatif)]);
+    rows.push(["Issue connue (indicatif)", NUM(ii.signalements_issue_connue_indicatif)]);
+    rows.push(["Taux de retrait (indicatif)", PCT(ii.taux_retrait_indicatif_pct)]);
+    rows.push(["Note", ii.note || ""]);
+  }
+  return expFeuille(rows);
+}
+
+function feuilleSortiesAnonymat() {
+  var an = DATA.anonymity || {};
+  var rows = [["Sorties d'anonymat / remontées institutionnelles — 2026"], [],
+    ["Cumul janv.–mai 2026", NUM(an.cumul_janvier_mai_2026)], []];
+  rows.push(["Par mois", "Sorties", "Statut"]);
+  (an.par_mois_2026 || []).forEach(function (o) { rows.push([expLabelMois(o.mois), NUM(o.sorties), o.statut]); });
+  rows.push([]);
+  rows.push(["Par destinataire (cumul janv.–mai)", "Sorties"]);
+  (an.par_destinataire_janv_mai || []).forEach(function (o) { rows.push([o.destinataire, NUM(o.sorties)]); });
+  var ips = an.sous_destinataires_ips;
+  if (ips) {
+    rows.push([]);
+    rows.push(["Détail IPS (catégories NON exclusives — ne pas additionner)", "Cumul janv.–mai"]);
+    ["Procureur", "CRIP", "OFMIN", "OCRTEH"].forEach(function (k) { if (ips[k] != null) rows.push([k, NUM(ips[k])]); });
+    rows.push(["Note", ips.note || ""]);
+  }
+  return expFeuille(rows);
+}
+
+function feuilleBikGlobal() {
+  var b = DATA.bik || {};
+  var meta = b._meta || {}, op = b.operationnel || {}, pc = b.public_cible || {},
+      cat = b.categories_bik_non_exclusives || {}, can = b.canaux || {},
+      ou = b.ou_le_probleme_a_eu_lieu || {}, dsa = b.dsa || {}, na = b.narratif || {};
+  var rows = [["Données BIK / Insafe — " + (meta.trimestre || "")], [meta.avertissement || ""], []];
+  rows.push(["Contacts totaux déclarés", NUM(b.contacts_total_declares)]);
+  rows.push(["Type de helpline", op.type_helpline || "n.d.", "Part général (%)", PCT(op.part_general_pct)]);
+  rows.push(["Conseillers (total / nouveaux)", NUM(op.conseillers_total), NUM(op.conseillers_nouveaux)]);
+  rows.push([]);
+  rows.push(["Public cible", "Nombre"]);
+  Object.keys(pc).forEach(function (k) { rows.push([k.replace(/_/g, " "), NUM(pc[k])]); });
+  rows.push([]);
+  rows.push(["Catégories BIK (NON exclusives)", "Contacts"]);
+  Object.keys(cat).forEach(function (k) { rows.push([k.replace(/_/g, " "), NUM(cat[k])]); });
+  rows.push([]);
+  rows.push(["Canaux (BIK)", "Contacts"]);
+  Object.keys(can).forEach(function (k) { rows.push([k, NUM(can[k])]); });
+  rows.push([]);
+  rows.push(["Où le problème a eu lieu", "Contacts"]);
+  Object.keys(ou).forEach(function (k) { rows.push([k, NUM(ou[k])]); });
+  rows.push([]);
+  rows.push(["DSA — Trusted Flagger", dsa.trusted_flagger || "n.d."]);
+  rows.push(["DSA — désigné depuis", dsa.designe_depuis || "n.d."]);
+  rows.push(["DSA — signalements trimestre", NUM(dsa.signalements_trimestre)]);
+  rows.push([]);
+  rows.push(["Tendances", na.tendances || ""]);
+  rows.push(["Success story", na.success_story || ""]);
+  rows.push(["Difficultés", na.difficultes || ""]);
+  return expFeuille(rows);
+}
+
+function feuilleEtpAbsences(I, mois) {
+  var liste = mois || Object.keys(I.etp).concat(Object.keys(I.abs))
+    .filter(function (v, i, a) { return a.indexOf(v) === i; }).sort();
+  var rows = [["Mois", "ETP théorique", "Statut ETP", "Absences totales (h)",
+    "Congés payés", "Maladie", "RTT", "Maternité", "Formation",
+    "Évén. familiaux", "Récupération", "Autres", "Personnes concernées", "Nb écoutants"]];
+  liste.forEach(function (ym) {
+    var e = I.etp[ym], ab = I.abs[ym], wf = I.wf[ym];
+    rows.push([
+      expLabelMois(ym),
+      e ? NUM(e.etp) : null, e ? e.statut : "n.d.",
+      ab ? NUM(ab.total_heures_absence) : null,
+      ab ? NUM(ab.conges_payes) : null, ab ? NUM(ab.maladie) : null, ab ? NUM(ab.rtt) : null,
+      ab ? NUM(ab.maternite) : null, ab ? NUM(ab.formation) : null, ab ? NUM(ab.evenements_familiaux) : null,
+      ab ? NUM(ab.recuperation) : null, ab ? NUM(ab.autres) : null, ab ? NUM(ab.personnes_concernees) : null,
+      (wf && wf.nombre_ecoutants != null) ? wf.nombre_ecoutants : null
+    ]);
+  });
+  return expFeuille(rows, { filtre: true });
+}
+
+/* Feuille « Données consolidées » : tout au même format (format long). */
+function feuilleConsolidee(I, mois) {
+  var entete = ["Catégorie", "Sous-catégorie", "Indicateur", "Période", "Valeur", "Unité", "Source", "Type de donnée"];
+  var rows = [entete];
+  function add(cat, sous, ind, per, val, unite, src, type) {
+    rows.push([cat, sous, ind, per, val, unite, src, type]);
+  }
+  var liste = mois || ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05"];
+
+  liste.forEach(function (ym) {
+    var L = expLabelMois(ym);
+    var a = expAppels(I, ym);
+    if (a) {
+      add("Téléphone", "", "Appels reçus", L, NUM(a.recus), "appels", "3CX", "importée");
+      add("Téléphone", "", "Appels décrochés", L, NUM(a.decroches), "appels", "3CX", "importée");
+      add("Téléphone", "", "Appels abandonnés", L, NUM(a.abandonnes), "appels", "3CX", "importée");
+      add("Téléphone", "", "Taux de réponse", L, PCT(a.taux), "%", "3CX", "calculée");
+    }
+    var t = expTchat(I, ym);
+    if (t && (t.recus != null || t.traites != null)) {
+      add("Tchat", "", "Tchats reçus", L, NUM(t.recus), "tchats", "export tchat", "importée");
+      add("Tchat", "", "Tchats traités", L, NUM(t.traites), "tchats", "export tchat", "importée");
+      add("Tchat", "", "Taux de prise", L, PCT(t.taux), "%", "export tchat", "calculée");
+    }
+    var mails = expMails(I, ym);
+    if (mails != null) add("Mail", "", "Mails traités", L, NUM(mails), "mails", "export SF Case", "importée");
+    var vol = expContactsTraites(I, ym);
+    if (vol != null) add("Tous canaux", "", "Activité traitée", L, NUM(vol), "contacts", "consolidé / reconstruit", I.act[ym] ? "calculée" : "importée");
+    var sol = expSollicitations(I, ym);
+    if (sol != null) add("Tous canaux", "", "Sollicitations reçues", L, NUM(sol), "contacts", "reconstruit", "calculée");
+    var sig = expSignalements(I, ym);
+    if (sig != null) add("Trusted Flagger", "", "Signalements envoyés", L, NUM(sig), "signalements", "Signalements RS", "importée");
+    var sor = expSorties(I, ym);
+    if (sor != null) add("Sorties d'anonymat", "", "Sorties d'anonymat", L, NUM(sor), "sorties", "Sorties d'anonymat", "importée");
+  });
+
+  // ETP + absences (toute la profondeur disponible)
+  Object.keys(I.etp).sort().forEach(function (ym) {
+    var e = I.etp[ym]; if (e && e.etp != null) add("ETP", "", "ETP théorique", expLabelMois(ym), e.etp, "ETP", "Octime", "importée");
+  });
+  Object.keys(I.abs).sort().forEach(function (ym) {
+    var ab = I.abs[ym]; if (ab && ab.total_heures_absence != null) add("Absences", "", "Heures d'absence", expLabelMois(ym), ab.total_heures_absence, "heures", "Octime", "importée");
+  });
+  return expFeuille(rows, { filtre: true });
+}
+
+function feuilleMethodologie() {
+  var m = DATA.methodology || {};
+  var rows = [["Méthodologie"], []];
+  rows.push(["Fichiers utilisés", "Usage", "Période", "Limite"]);
+  (m.fichiers_utilises || []).forEach(function (f) { rows.push([f.fichier, f.usage, f.periode, f.limite]); });
+  rows.push([]);
+  rows.push(["Règles de calcul", ""]);
+  var rc = m.regles_de_calcul || {};
+  Object.keys(rc).forEach(function (k) {
+    var v = rc[k]; rows.push([k.replace(/_/g, " "), (typeof v === "string") ? v : JSON.stringify(v)]);
+  });
+  rows.push([]);
+  rows.push(["Données manquantes"]);
+  (m.donnees_manquantes || []).forEach(function (s) { rows.push(["", s]); });
+  rows.push([]);
+  rows.push(["Écarts entre sources", "Écart", "Source retenue"]);
+  (m.ecarts_entre_sources || []).forEach(function (e) { rows.push([e.sujet, e.ecart, e.source_retenue]); });
+  rows.push([]);
+  rows.push(["À propos de cet export Excel"]);
+  rows.push(["", "Les nombres sont enregistrés comme nombres, les pourcentages comme pourcentages, les dates au format français."]);
+  rows.push(["", "Les données absentes sont écrites « n.d. » : elles ne sont jamais remplacées par zéro ni extrapolées."]);
+  rows.push(["", "Filtres automatiques activés sur les tableaux à une seule grille. Pour figer la première ligne : dans Excel, Affichage > Figer les volets."]);
+  rows.push(["", "Confidentialité : aucune donnée personnelle. " + ((m.confidentialite || "") || "")]);
+  return expFeuille(rows);
+}
+
+/* =================================================================
+   1) EXPORT GLOBAL — toutes les feuilles.
+   ================================================================= */
+function construireClasseurComplet() {
+  var I = expIndex();
+  var wb = XLSX.utils.book_new();
+  expAjouter(wb, "Synthèse", feuilleSynthese(I));
+  expAjouter(wb, "Activité mensuelle", feuilleMensuelle(I));
+  expAjouter(wb, "Activité trimestrielle", feuilleTrimestrielle());
+  expAjouter(wb, "Activité annuelle", feuilleAnnuelle());
+  expAjouter(wb, "Téléphone", feuilleTelephone(I));
+  expAjouter(wb, "Tchat", feuilleTchat(I));
+  expAjouter(wb, "Trusted flagger", feuilleTrustedFlagger());
+  expAjouter(wb, "Sorties anonymat", feuilleSortiesAnonymat());
+  expAjouter(wb, "BIK", feuilleBikGlobal());
+  expAjouter(wb, "ETP et absences", feuilleEtpAbsences(I));
+  expAjouter(wb, "Données consolidées", feuilleConsolidee(I));
+  expAjouter(wb, "Méthodologie", feuilleMethodologie());
+  return wb;
+}
+function exportComplet() {
+  try {
+    if (typeof XLSX === "undefined") { alert("La bibliothèque d'export (SheetJS) n'est pas chargée."); return; }
+    var wb = construireClasseurComplet();
+    XLSX.writeFile(wb, "export_complet_3018_" + expAujourdhui().iso + ".xlsx");
+  } catch (e) {
+    alert("Une erreur est survenue pendant l'export : " + e.message);
+  }
+}
+
+/* =================================================================
+   2) EXPORT BIK — Grant agreement (1er octobre 2025 -> 31 mai 2026).
+   ================================================================= */
+var BIK_DE = "2025-10", BIK_A = "2026-05";
+
+function feuilleBikSyntheseGA(I, mois) {
+  var total = expSomme(mois.map(function (ym) { return expContactsTraites(I, ym); }));
+  // canaux sur la sous-période cohérente fév.–mai 2026 (téléphone décroché + tchat traité + mails)
+  var moisCanaux = mois.filter(function (ym) { return I.chat[ym] && I.mails[ym] && I.phone[ym]; });
+  var tel = expSomme(moisCanaux.map(function (ym) { return (I.phone[ym] || {}).appels_decroches; }));
+  var tch = expSomme(moisCanaux.map(function (ym) { return (I.chat[ym] || {}).tchats_traites; }));
+  var mai = expSomme(moisCanaux.map(function (ym) { return expMails(I, ym); }));
+  var baseCanaux = expSomme([tel, tch, mai]);
+  var libCanaux = moisCanaux.length ? (expLabelMois(moisCanaux[0]) + " à " + expLabelMois(moisCanaux[moisCanaux.length - 1])) : "n.d.";
+  var rows = [
+    ["Synthèse BIK — Grant agreement"],
+    ["Période analysée", "du 1er octobre 2025 au 31 mai 2026"],
+    ["Date de génération", expAujourdhui().fr],
+    [],
+    ["Total des sollicitations traitées sur la période", NUM(total), "", "somme des contacts traités des mois disponibles"],
+    ["  couverture", expSomme(mois.map(function (ym) { return expContactsTraites(I, ym) != null ? 1 : 0; })) + " mois sur " + mois.length, "", "octobre–décembre 2025 : total tous canaux issu de l'historique ; janvier–mai 2026 : tableau d'activité"],
+    [],
+    ["Répartition par canal (base : " + libCanaux + ")", "Nombre", "Part (%)", "Note"],
+    ["Téléphone (appels décrochés)", NUM(tel), PCT(expPart(tel, baseCanaux)), ""],
+    ["Tchat (site + application, non distingués)", NUM(tch), PCT(expPart(tch, baseCanaux)), "site vs application : n.d."],
+    ["  dont tchat du site", null, "n.d.", "non distingué dans les sources"],
+    ["  dont tchat de l'application", null, "n.d.", "non distingué dans les sources"],
+    ["Mails", NUM(mai), PCT(expPart(mai, baseCanaux)), "mai partiel (26/05)"],
+    ["Formulaires", null, "n.d.", "non distingués des mails dans les sources"],
+    ["Total canaux (base)", NUM(baseCanaux), baseCanaux != null ? { __pct: 100 } : "n.d.", ""],
+    [],
+    ["Téléchargements de l'application au 31/05/2026", null, "", "n.d. — donnée non présente dans les fichiers intégrés"],
+  ];
+  return expFeuille(rows);
+}
+
+function feuilleBikCanaux(I, mois) {
+  var rows = [["Mois", "Téléphone (décrochés)", "Tchat (traités)", "Mails", "Total canaux"]];
+  mois.forEach(function (ym) {
+    var tel = (I.phone[ym] || {}).appels_decroches;
+    var tch = (I.chat[ym] || {}).tchats_traites;
+    var mai = expMails(I, ym);
+    var tot = expSomme([tel, tch, mai]);
+    rows.push([expLabelMois(ym), NUM(tel), NUM(tch), NUM(mai), NUM(tot)]);
+  });
+  rows.push([]);
+  rows.push(["Note", "Sur octobre–décembre 2025, le détail par canal n'est pas disponible (n.d.). Le tchat du site et celui de l'application ne sont pas distingués dans les sources."]);
+  return expFeuille(rows, { filtre: true });
+}
+
+function feuilleBikTelephone(I, mois) {
+  var rows = [["Mois", "Appels reçus", "Appels pris (décrochés)", "Appels non répondus",
+    "Taux de réponse", "Durée moyenne appel"]];
+  var sr = 0, sp = 0, dispo = false;
+  mois.forEach(function (ym) {
+    var o = I.phone[ym];
+    if (!o) { rows.push([expLabelMois(ym), null, null, null, "n.d.", "n.d."]); return; }
+    dispo = true; sr += o.appels_recus || 0; sp += o.appels_decroches || 0;
+    rows.push([expLabelMois(ym), NUM(o.appels_recus), NUM(o.appels_decroches),
+      NUM(o.appels_abandonnes), PCT(o.taux_reponse_pct), o.duree_moyenne_appel || "n.d."]);
+  });
+  rows.push([]);
+  rows.push(["Total période disponible", NUM(dispo ? sr : null), NUM(dispo ? sp : null), "",
+    PCT(dispo ? expPart(sp, sr) : null), ""]);
+  rows.push(["Temps moyen d'attente", "n.d.", "", "", "", "donnée non présente dans les fichiers"]);
+  rows.push(["Situations à contacts multiples", "n.d.", "", "", "", "donnée non présente dans les fichiers"]);
+  return expFeuille(rows, { filtre: true });
+}
+
+function feuilleBikTchats(I, mois) {
+  var rows = [["Mois", "Tchats reçus", "Tchats traités", "Taux de prise",
+    "Tchat du site", "Tchat de l'application"]];
+  mois.forEach(function (ym) {
+    var o = I.chat[ym];
+    if (!o) { rows.push([expLabelMois(ym), null, null, "n.d.", "n.d.", "n.d."]); return; }
+    rows.push([expLabelMois(ym), NUM(o.tchats_recus), NUM(o.tchats_traites), PCT(o.taux_prise_pct),
+      "n.d.", "n.d."]);
+  });
+  rows.push([]);
+  rows.push(["Note", "Le tchat du site et celui de l'application ne sont pas distingués dans les sources : « n.d. » plutôt qu'une répartition artificielle."]);
+  return expFeuille(rows, { filtre: true });
+}
+
+function feuilleBikMailsFormulaires(I, mois) {
+  var rows = [["Mois", "Mails reçus", "Mails traités", "Formulaires reçus", "Formulaires traités"]];
+  mois.forEach(function (ym) {
+    var mai = expMails(I, ym);
+    rows.push([expLabelMois(ym), "n.d.", NUM(mai), "n.d.", "n.d."]);
+  });
+  rows.push([]);
+  rows.push(["Note", "Seuls les mails traités sont disponibles (export SF Case). Les formulaires ne sont pas distingués des mails dans les sources : « n.d. »."]);
+  return expFeuille(rows, { filtre: true });
+}
+
+function feuilleBikApplication(I, mois) {
+  var rows = [["Indicateur application 3018", "Valeur", "Note"],
+    ["Téléchargements au 31/05/2026", "n.d.", "donnée non présente dans les fichiers intégrés"],
+    ["Sollicitations via le tchat de l'application", "n.d.", "tchat application non distingué du tchat site"],
+    ["Preuves / pièces jointes transmises via l'application", "n.d.", "donnée non présente dans les fichiers intégrés"]];
+  return expFeuille(rows);
+}
+
+function feuilleBikDonneesSources(I, mois) {
+  // tableau de contrôle de couverture : indicateur x mois + couverture complète
+  var indicateurs = [
+    ["Contacts traités (tous canaux)", function (ym) { return expContactsTraites(I, ym); }],
+    ["Téléphone — appels décrochés", function (ym) { return (I.phone[ym] || {}).appels_decroches; }],
+    ["Tchat — tchats traités", function (ym) { return (I.chat[ym] || {}).tchats_traites; }],
+    ["Mails traités", function (ym) { return expMails(I, ym); }],
+    ["Signalements Trusted Flagger", function (ym) { return expSignalements(I, ym); }],
+    ["Sorties d'anonymat", function (ym) { return expSorties(I, ym); }],
+  ];
+  var entete = ["Indicateur"].concat(mois.map(expLabelMois)).concat(["Couverture complète"]);
+  var rows = [["Tableau de contrôle de couverture (1 valeur par mois attendu)"], [], entete];
+  indicateurs.forEach(function (def) {
+    var ligne = [def[0]], complet = true;
+    mois.forEach(function (ym) {
+      var v = def[1](ym);
+      ligne.push(v == null ? null : v);
+      if (v == null) complet = false;
+    });
+    ligne.push(complet ? "oui" : "non");
+    rows.push(ligne);
+  });
+  rows.push([]);
+  rows.push(["Une donnée ne couvrant qu'une partie de la période n'est pas extrapolée sur les mois manquants."]);
+  return expFeuille(rows);
+}
+
+function feuilleBikMethodo(I, mois) {
+  var rows = [["Méthodologie — export BIK Grant agreement"], [],
+    ["Période", "1er octobre 2025 au 31 mai 2026 (8 mois)"],
+    ["Total sollicitations traitées", "contacts effectivement pris en charge (lexique de l'outil) ; PAS les contacts entrants ni les tentatives."],
+    ["Parts par canal", "nombre de sollicitations traitées du canal ÷ total des sollicitations traitées de la base × 100."],
+    ["Taux de réponse téléphone", "appels pris ÷ appels reçus × 100 (jamais sur le total tous canaux)."],
+    ["Recalcul", "tous les agrégats, totaux, moyennes et parts sont recalculés uniquement sur la période sélectionnée."],
+    ["Données absentes", "écrites « n.d. », jamais remplacées par zéro, jamais extrapolées."],
+    ["Couverture", "octobre–décembre 2025 : seul le total tous canaux et les signalements plateformes sont disponibles ; le détail par canal commence en février 2026."],
+    ["Confidentialité", "aucune donnée personnelle."],
+  ];
+  return expFeuille(rows);
+}
+
+function construireClasseurBIK() {
+  var I = expIndex();
+  var mois = expListeMois(BIK_DE, BIK_A);
+  var wb = XLSX.utils.book_new();
+  expAjouter(wb, "Synthèse BIK", feuilleBikSyntheseGA(I, mois));
+  expAjouter(wb, "Canaux", feuilleBikCanaux(I, mois));
+  expAjouter(wb, "Téléphone", feuilleBikTelephone(I, mois));
+  expAjouter(wb, "Tchats", feuilleBikTchats(I, mois));
+  expAjouter(wb, "Mails et formulaires", feuilleBikMailsFormulaires(I, mois));
+  expAjouter(wb, "Application 3018", feuilleBikApplication(I, mois));
+  expAjouter(wb, "Données sources", feuilleBikDonneesSources(I, mois));
+  expAjouter(wb, "Méthodologie", feuilleBikMethodo(I, mois));
+  return wb;
+}
+function exportBIK() {
+  var wb = construireClasseurBIK();
+  XLSX.writeFile(wb, "export_BIK_2025-10-01_2026-05-31.xlsx");
+}
+
+/* =================================================================
+   3) EXPORT PERSONNALISÉ — sous-ensemble de feuilles sur une période.
+   ================================================================= */
+function construireClasseurPerso(mois, sections, titrePeriode) {
+  var I = expIndex();
+  var wb = XLSX.utils.book_new();
+  if (sections.synthese) expAjouter(wb, "Synthèse", feuilleSynthese(I));
+  if (sections.mensuel) expAjouter(wb, "Activité mensuelle", feuilleMensuelle(I, mois));
+  if (sections.trimestriel) expAjouter(wb, "Activité trimestrielle", feuilleTrimestrielle());
+  if (sections.annuel) expAjouter(wb, "Activité annuelle", feuilleAnnuelle());
+  if (sections.telephone) expAjouter(wb, "Téléphone", feuilleTelephone(I, mois.filter(function (m) { return I.phone[m]; })));
+  if (sections.tchat) expAjouter(wb, "Tchat", feuilleTchat(I, mois.filter(function (m) { return I.chat[m]; })));
+  if (sections.tf) expAjouter(wb, "Trusted flagger", feuilleTrustedFlagger());
+  if (sections.anonymat) expAjouter(wb, "Sorties anonymat", feuilleSortiesAnonymat());
+  if (sections.bik) expAjouter(wb, "BIK", feuilleBikGlobal());
+  if (sections.etp) expAjouter(wb, "ETP et absences", feuilleEtpAbsences(I, mois));
+  if (sections.historique) expAjouter(wb, "Comparaison historique", feuilleHistoriquePerso(mois));
+  if (sections.consolidee) expAjouter(wb, "Données consolidées", feuilleConsolidee(I, mois));
+  expAjouter(wb, "Méthodologie", feuilleMethodologie());
+  return wb;
+}
+
+function feuilleHistoriquePerso(mois) {
+  var I = expIndex();
+  var rows = [["Comparaison historique (mois sélectionnés)"], [],
+    ["Mois", "Sollicitations 2024", "Sollicitations 2025", "Sollicitations 2026",
+      "Contacts traités 2024", "Contacts traités 2025", "Contacts traités 2026"]];
+  mois.forEach(function (ym) {
+    var i = parseInt(ym.slice(5, 7), 10) - 1;
+    var moisLabel = EXP_MOIS_LONG[ym.slice(5, 7)];
+    rows.push([moisLabel,
+      NUM(expHistVal(I.histSollic, "2024-" + ym.slice(5, 7))),
+      NUM(expHistVal(I.histSollic, "2025-" + ym.slice(5, 7))),
+      NUM(expHistVal(I.histSollic, "2026-" + ym.slice(5, 7))),
+      NUM(expHistVal(I.histContacts, "2024-" + ym.slice(5, 7))),
+      NUM(expHistVal(I.histContacts, "2025-" + ym.slice(5, 7))),
+      NUM(expHistVal(I.histContacts, "2026-" + ym.slice(5, 7))),
+    ]);
+  });
+  return expFeuille(rows, { filtre: true });
+}
+
+/* ---- modèles prédéfinis : période + sections ---- */
+var EXP_MODELES = {
+  bik_ga: { label: "BIK – Grant agreement", de: "2025-10", a: "2026-05", special: "bik" },
+  tf: { label: "Trusted flagger", de: "2026-01", a: "2026-06", sections: { tf: true, consolidee: true } },
+  annuel: { label: "Activité annuelle", de: "2026-01", a: "2026-05", sections: { synthese: true, mensuel: true, trimestriel: true, annuel: true, consolidee: true } },
+  histo: { label: "Comparaison historique", de: "2026-01", a: "2026-05", sections: { historique: true } },
+  libre: { label: "Export libre", de: "2026-01", a: "2026-05", sections: { synthese: true, mensuel: true, consolidee: true } },
+};
+
+/* =================================================================
+   Fenêtre « export personnalisé » (modale)
+   ================================================================= */
+var EXP_MODAL_PRET = false;
+function initModalExport() {
+  if (EXP_MODAL_PRET) return; EXP_MODAL_PRET = true;
+  var sel = document.getElementById("exp-modele");
+  if (sel) sel.addEventListener("change", function () { appliquerModele(sel.value); });
+  var gen = document.getElementById("exp-generer");
+  if (gen) gen.addEventListener("click", lancerExportPerso);
+  document.querySelectorAll("#modal-export [data-fermer]").forEach(function (b) {
+    b.addEventListener("click", fermerModalExport);
+  });
+  var rapide = document.getElementById("exp-rapide");
+  if (rapide) rapide.addEventListener("change", function () {
+    var de = document.getElementById("exp-de"), a = document.getElementById("exp-a");
+    var p = { tout: ["2026-01", "2026-06"], "2026": ["2026-01", "2026-12"],
+      t1: ["2026-01", "2026-03"], t2: ["2026-04", "2026-06"] }[rapide.value];
+    if (p && de && a) { de.value = p[0]; a.value = p[1]; }
+  });
+}
+function ouvrirModalExport() {
+  var modal = document.getElementById("modal-export");
+  if (!modal) return;
+  initModalExport();
+  modal.hidden = false;
+  appliquerModele("libre"); // valeurs par défaut
+}
+function fermerModalExport() {
+  var modal = document.getElementById("modal-export");
+  if (modal) modal.hidden = true;
+}
+function appliquerModele(cle) {
+  var m = EXP_MODELES[cle]; if (!m) return;
+  var de = document.getElementById("exp-de"), a = document.getElementById("exp-a");
+  if (de) de.value = m.de; if (a) a.value = m.a;
+  var sel = document.getElementById("exp-modele"); if (sel) sel.value = cle;
+  // cases à cocher des sections
+  var sections = m.sections || {};
+  document.querySelectorAll("#modal-export input[data-section]").forEach(function (chk) {
+    chk.checked = !!sections[chk.dataset.section];
+    chk.disabled = (m.special === "bik"); // le modèle BIK a sa propre structure
+  });
+  var info = document.getElementById("exp-info");
+  if (info) info.textContent = (m.special === "bik")
+    ? "Le modèle BIK génère sa structure dédiée (8 onglets) sur la période. Vous pouvez ajuster les dates."
+    : "Cochez les sections à inclure. La période ci-dessus est modifiable.";
+}
+function lancerExportPerso() {
+  var cle = (document.getElementById("exp-modele") || {}).value || "libre";
+  var de = (document.getElementById("exp-de") || {}).value || "2026-01";
+  var a = (document.getElementById("exp-a") || {}).value || "2026-05";
+  var m = EXP_MODELES[cle] || {};
+  try {
+    if (m.special === "bik") {
+      BIK_DE = de; BIK_A = a;
+      var wbb = construireClasseurBIK();
+      XLSX.writeFile(wbb, "export_BIK_" + de + "-01_" + a + "-31.xlsx");
+      fermerModalExport(); return;
+    }
+    var mois = expListeMois(de, a);
+    var sections = {};
+    document.querySelectorAll("#modal-export input[data-section]").forEach(function (chk) {
+      if (chk.checked) sections[chk.dataset.section] = true;
+    });
+    var wb = construireClasseurPerso(mois, sections, de + " à " + a);
+    XLSX.writeFile(wb, "export_personnalise_3018_" + de + "_" + a + ".xlsx");
+    fermerModalExport();
+  } catch (e) {
+    alert("Erreur pendant l'export personnalisé : " + e.message);
+  }
 }

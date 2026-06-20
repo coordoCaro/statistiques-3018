@@ -94,6 +94,67 @@
     <div id="pied-contenu"></div>
   </footer>
 
+  <!-- Fenêtre « export personnalisé » (cachée par défaut) -->
+  <div id="modal-export" class="modal" hidden>
+    <div class="modal-fond" data-fermer></div>
+    <div class="modal-boite" role="dialog" aria-modal="true" aria-labelledby="exp-titre">
+      <h3 id="exp-titre" class="bloc-titre">Créer un export personnalisé</h3>
+
+      <div class="modal-champ">
+        <label class="filtre-label" for="exp-modele">Modèle</label>
+        <select id="exp-modele" class="filtre-select">
+          <option value="libre">Export libre</option>
+          <option value="bik_ga">BIK – Grant agreement</option>
+          <option value="tf">Trusted flagger</option>
+          <option value="annuel">Activité annuelle</option>
+          <option value="histo">Comparaison historique</option>
+        </select>
+      </div>
+
+      <div class="modal-champ">
+        <label class="filtre-label" for="exp-rapide">Période rapide</label>
+        <select id="exp-rapide" class="filtre-select">
+          <option value="">— choisir —</option>
+          <option value="tout">Toute la période (2026)</option>
+          <option value="2026">Année 2026</option>
+          <option value="t1">T1 2026 (janv.–mars)</option>
+          <option value="t2">T2 2026 (avr.–juin)</option>
+        </select>
+      </div>
+
+      <div class="modal-champ">
+        <label class="filtre-label" for="exp-de">Du mois</label>
+        <input type="month" id="exp-de" class="filtre-select" />
+        <label class="filtre-label" for="exp-a">au mois</label>
+        <input type="month" id="exp-a" class="filtre-select" />
+      </div>
+
+      <p class="intro" id="exp-info"></p>
+
+      <div class="modal-champ export-sections">
+        <span class="filtre-label">Sections à inclure</span>
+        <label><input type="checkbox" data-section="synthese" /> Synthèse</label>
+        <label><input type="checkbox" data-section="mensuel" /> Activité mensuelle</label>
+        <label><input type="checkbox" data-section="trimestriel" /> Activité trimestrielle</label>
+        <label><input type="checkbox" data-section="annuel" /> Activité annuelle</label>
+        <label><input type="checkbox" data-section="telephone" /> Téléphone</label>
+        <label><input type="checkbox" data-section="tchat" /> Tchat</label>
+        <label><input type="checkbox" data-section="tf" /> Trusted flagger</label>
+        <label><input type="checkbox" data-section="anonymat" /> Sorties d'anonymat</label>
+        <label><input type="checkbox" data-section="bik" /> BIK</label>
+        <label><input type="checkbox" data-section="etp" /> ETP et absences</label>
+        <label><input type="checkbox" data-section="historique" /> Comparaison historique</label>
+        <label><input type="checkbox" data-section="consolidee" /> Données consolidées</label>
+      </div>
+
+      <div class="modal-actions">
+        <button id="exp-generer" class="bouton">Générer le fichier Excel</button>
+        <button class="bouton bouton-secondaire" data-fermer>Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="vendor/xlsx.full.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

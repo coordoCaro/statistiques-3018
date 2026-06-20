@@ -21,6 +21,8 @@ statistiques-3018/
 ├── index.html        ← la page (structure)        ← NE PAS modifier en principe
 ├── style.css         ← l'apparence                 ← NE PAS modifier en principe
 ├── app.js            ← la logique d'affichage      ← NE PAS modifier en principe
+├── vendor/
+│   └── xlsx.full.min.js  ← bibliothèque SheetJS (export Excel hors ligne)
 ├── README.md         ← ce fichier
 └── data/             ← LES DONNÉES (à actualiser)  ← c'est ICI qu'on met à jour
     ├── activity_monthly.json
@@ -263,3 +265,53 @@ mesurent pas une performance individuelle.
   n'est jamais recomptée dans les activités annexes.
 - La différence entre heures ETP et heures mesurées **n'est pas** de
   l'inactivité : beaucoup d'activités ne sont pas mesurées.
+
+---
+
+## Export Excel (.xlsx)
+
+Depuis l'onglet **Synthèse**, deux boutons permettent de télécharger les données
+au format Excel. Tout se passe dans le navigateur : aucune donnée n'est envoyée
+sur Internet, et l'export fonctionne **hors ligne** (la bibliothèque SheetJS est
+incluse dans `vendor/`).
+
+- **Exporter toutes les données** → un classeur avec un onglet par thème :
+  Synthèse, Activité mensuelle, Activité trimestrielle, Activité annuelle,
+  Téléphone, Tchat, Trusted flagger, Sorties anonymat, BIK, ETP et absences,
+  **Données consolidées** (toutes les valeurs au même format, filtrables) et
+  Méthodologie.
+
+- **Créer un export personnalisé** → une fenêtre pour choisir :
+  - un **modèle** (Export libre, **BIK – Grant agreement**, Trusted flagger,
+    Activité annuelle, Comparaison historique). Le modèle pré-remplit la période
+    et les sections, que vous pouvez ensuite modifier ;
+  - une **période** (période rapide ou mois de début/fin) ;
+  - les **sections** à inclure.
+
+  Le modèle **BIK – Grant agreement** génère sa structure dédiée (8 onglets,
+  période 1ᵉʳ octobre 2025 → 31 mai 2026), avec un **tableau de contrôle de
+  couverture** indiquant, mois par mois, les indicateurs disponibles.
+
+### Comment les données sont écrites
+
+- Les **nombres** sont écrits comme des nombres, les **pourcentages** comme de
+  vrais pourcentages (format `0,0 %`), les **dates** au format français.
+- Une donnée absente s'écrit **« n.d. »** : jamais remplacée par zéro, jamais
+  extrapolée. Les calculs (cumuls, parts, moyennes) sont refaits **uniquement**
+  sur la période demandée.
+- Un **filtre automatique** est posé sur les tableaux à une seule grille
+  (petites flèches de tri/filtre sur les en-têtes).
+
+### Limite connue (à savoir)
+
+La version gratuite et hors-ligne de SheetJS **n'écrit pas** le « figer la
+première ligne » ni le gras des en-têtes. Ce n'est pas un bug : ce moteur ne
+gère pas ces deux mises en forme. Pour figer la ligne d'en-tête, il suffit, dans
+Excel : **Affichage > Figer les volets > Figer la ligne supérieure** (un clic).
+Les filtres et les largeurs de colonnes, eux, sont bien appliqués.
+
+### Mettre à jour SheetJS (optionnel)
+
+Le fichier `vendor/xlsx.full.min.js` est figé : il n'a pas besoin d'être mis à
+jour pour fonctionner. Pour le remplacer un jour, télécharger une nouvelle
+version de la bibliothèque SheetJS (`xlsx.full.min.js`) et écraser le fichier.

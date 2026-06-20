@@ -300,3 +300,29 @@ table.compact th, table.compact td { padding: 6px 8px; font-size: 12px; }
 .ea-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 12px; }
 .ea-chart h4.bloc-titre { font-size: 13.5px; margin: 10px 0 4px; }
 @media (max-width: 720px) { .ea-charts { grid-template-columns: 1fr; } }
+
+/* ---------- Boutons d'export & fenêtre « export personnalisé » ---------- */
+.export-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 0; }
+
+/* variante claire du bouton (bouton secondaire) */
+.bouton-secondaire {
+  background: var(--blanc); color: var(--bleu); border: 1px solid var(--bleu);
+}
+.bouton-secondaire:hover { background: var(--fond-doux); border-color: var(--bleu-fonce); color: var(--bleu-fonce); }
+
+/* la modale : un voile sombre + une boîte blanche centrée */
+.modal { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; }
+.modal[hidden] { display: none; }
+.modal-fond { position: absolute; inset: 0; background: rgba(26, 31, 54, 0.45); }
+.modal-boite {
+  position: relative; background: var(--blanc); border-radius: var(--rayon);
+  box-shadow: 0 10px 40px rgba(26, 31, 54, 0.25); padding: 22px 24px;
+  width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto;
+}
+.modal-boite .bloc-titre { margin-top: 0; }
+.modal-champ { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0; }
+.modal-champ .filtre-label { margin-right: 0; }
+.export-sections { flex-direction: column; align-items: flex-start; gap: 6px; }
+.export-sections label { font-size: 14px; color: var(--encre); font-weight: 500; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.export-sections label input { width: 15px; height: 15px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 18px; }
