@@ -326,3 +326,11 @@ table.compact th, table.compact td { padding: 6px 8px; font-size: 12px; }
 .export-sections label { font-size: 14px; color: var(--encre); font-weight: 500; display: flex; align-items: center; gap: 6px; cursor: pointer; }
 .export-sections label input { width: 15px; height: 15px; }
 .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+
+/* ---------- Onglet Trusted Flagger : sous-navigation et croisements ---------- */
+#tf-vues { margin-bottom: 4px; }
+#tf-filtres label .bouton { margin-top: 2px; }
+#cr-table .table-enveloppe { max-height: 560px; overflow: auto; }
+#cr-table table th:first-child, #cr-table table td:first-child { position: sticky; left: 0; background: var(--blanc); }
+#cr-table thead th { position: sticky; top: 0; z-index: 2; }
+#cr-table tbody tr:nth-child(even) td:first-child { background: #fcfdff; }

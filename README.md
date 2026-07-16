@@ -315,3 +315,18 @@ Les filtres et les largeurs de colonnes, eux, sont bien appliqués.
 Le fichier `vendor/xlsx.full.min.js` est figé : il n'a pas besoin d'être mis à
 jour pour fonctionner. Pour le remplacer un jour, télécharger une nouvelle
 version de la bibliothèque SheetJS (`xlsx.full.min.js`) et écraser le fichier.
+
+## Onglet « Signalements Trusted Flagger » (mise à jour juillet 2026)
+
+L'onglet repose sur `data/trusted_flagger_2026.json`, généré à partir des fichiers
+`2026_T1_-_SIGNALEMENTS_PLATEFORMES.xlsx` et `2026_T2_-_SIGNALEMENTS_PLATEFORMES.xlsx`
+(onglet « Données », 1 ligne = 1 signalement envoyé, rattachement par date d'envoi).
+
+Pour actualiser : fournir les nouveaux fichiers trimestriels à Claude, qui régénère
+`trusted_flagger_2026.json` (aucune donnée personnelle n'y figure). Remplacer ensuite
+ce seul fichier dans le dossier `data/` : l'onglet, ses neuf vues et la feuille
+d'export Excel se mettent à jour sans toucher au HTML ni au JavaScript.
+
+Note de périmètre : la synthèse, l'activité mensuelle et les feuilles consolidées
+reposent encore sur l'ancienne extraction arrêtée au 12/06/2026
+(`trusted_flagger.json`). L'écart est documenté dans l'onglet Méthodologie.

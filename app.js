@@ -589,56 +589,148 @@ function renderTchat() {
 
 /* ---------------- SIGNALEMENTS TF ---------------- */
 /* ===== Tableau de bord Trusted Flagger (dynamique, 2026) ===== */
-let TF_F = { periode: "annee", plat: "__all__", theme: "__all__" };
+/* =================================================================
+   ONGLET « SIGNALEMENTS TRUSTED FLAGGER » — tableau de bord analytique
+   -----------------------------------------------------------------
+   Source unique : data/trusted_flagger_2026.json (fichiers T1/T2
+   Signalements plateformes, 1 ligne = 1 signalement envoyé).
+   - Rattachement par défaut : date d'envoi du signalement (modifiable).
+   - Aucune donnée absente n'est convertie en zéro : « Non renseigné »
+     est une catégorie à part entière, jamais assimilée à un refus.
+   - Un signalement multi-thématiques compte 1 fois dans le total
+     global, mais figure dans chacune de ses thématiques.
+   - Délai = première réponse − envoi ; jamais calculé si une date
+     manque ; délais négatifs (incohérence de saisie) écartés des
+     statistiques et comptés à part.
+   ================================================================= */
+let TF_F = {
+  axe: "e", periode: "2026",
+  plat: "__all__", theme: "__all__", dec: "__all__", tc: "__all__",
+  genre: "__all__", tranche: "__all__",
+  vue: "global",
+  crL: "plateforme", crC: "famille", crMode: "eff"
+};
 function escAttr(s) { return esc(s).replace(/"/g, "&quot;"); }
 function pctSafe(num, den) { return den > 0 ? Math.round(num / den * 1000) / 10 : null; }
-function showNA(v, suffixe) { return (v === null || v === undefined) ? "N/A" : nf(v) + (suffixe || ""); }
-function tdNA(v, suffixe) { return (v === null || v === undefined) ? '<td class="nd">N/A</td>' : "<td>" + nf(v) + (suffixe || "") + "</td>"; }
+function showNA(v, suffixe) { return (v === null || v === undefined) ? "n.d." : nf(v) + (suffixe || ""); }
+function tdNA(v, suffixe) { return (v === null || v === undefined) ? '<td class="nd">n.d.</td>' : "<td>" + nf(v) + (suffixe || "") + "</td>"; }
 
-function tfPeriodMatch(m, p) {
-  if (p === "annee") return true;
-  if (p.charAt(0) === "Q") return Math.ceil(m / 3) === (+p.charAt(1));
-  if (p.slice(0, 2) === "m:") return m === (+p.slice(2));
+/* ---------- référentiels dérivés du JSON ---------- */
+const TF_TRANCHES = ["Moins de 10 ans", "10-12 ans", "13-14 ans", "15-17 ans", "18 ans et plus", "Non renseigné"];
+function tfTranche(a) {
+  if (a === null || a === undefined) return 5;
+  if (a < 10) return 0; if (a <= 12) return 1; if (a <= 14) return 2; if (a <= 17) return 3; return 4;
+}
+const TF_FAM_LABELS = {
+  suppression_compte: "Suppression du compte", suppression_contenu: "Suppression du contenu",
+  avertissement: "Avertissement", non_violation: "Non violation des CGU",
+  url_introuvable: "URL introuvable", demande_infos: "Demande d'informations complémentaires",
+  deja_supprime: "Déjà supprimé", pas_de_reponse: "Pas de réponse (constat explicite)",
+  autre_decision: "Autre décision / mesure", non_renseigne: "Non renseigné"
+};
+const TF_FAM_ORDRE = ["suppression_compte", "suppression_contenu", "avertissement", "non_violation",
+  "url_introuvable", "demande_infos", "deja_supprime", "autre_decision", "pas_de_reponse", "non_renseigne"];
+function tfFam(r) { return DATA.tf2026.decisions[r.d].famille; }
+const TF_MOIS_LONG = { "01": "janv.", "02": "févr.", "03": "mars", "04": "avr.", "05": "mai", "06": "juin",
+  "07": "juil.", "08": "août", "09": "sept.", "10": "oct.", "11": "nov.", "12": "déc." };
+function tfLibMois(ym) { if (!ym) return "sans date"; const p = ym.split("-"); return (TF_MOIS_LONG[p[1]] || ym) + " " + p[0]; }
+function tfTrimDe(ym) { if (!ym) return null; return "T" + (Math.floor((+ym.slice(5, 7) - 1) / 3) + 1) + " " + ym.slice(0, 4); }
+
+/* ---------- axes temporels ---------- */
+const TF_AXES = {
+  e:  { label: "Date d'envoi du signalement", sans: "Sans date d'envoi" },
+  rc: { label: "Date de réception du dossier", sans: "Sans date de réception" },
+  rp: { label: "Date de réponse de la plateforme", sans: "Sans date de réponse" }
+};
+function tfYm(r) { return r[TF_F.axe]; }
+
+/* mois disponibles sur l'axe courant (triés) + présence de lignes sans date */
+function tfMoisDispo() {
+  const set = {}; let sans = false;
+  DATA.tf2026.records.forEach(r => { const v = tfYm(r); if (v) set[v] = true; else sans = true; });
+  return { mois: Object.keys(set).sort(), sans: sans };
+}
+
+/* ---------- filtres ---------- */
+function tfPerMatch(r, p) {
+  const v = tfYm(r);
+  if (p === "toutes") return true;
+  if (p === "sans_date") return !v;
+  if (!v) return false;
+  if (p === "2026") return v.slice(0, 4) === "2026";
+  if (p.charAt(0) === "T") return tfTrimDe(v) === p;
+  if (p.slice(0, 2) === "m:") return v === p.slice(2);
   return true;
 }
-function tfFilter(recs, f, use) {
-  const TF = DATA.tf2026;
+function tfMatch(r, f, use) {
   use = use || {};
-  const pIdx = (use.plat !== false && f.plat !== "__all__") ? TF.plats_index.indexOf(f.plat) : -1;
-  const tIdx = (use.theme !== false && f.theme !== "__all__") ? TF.themes_index.indexOf(f.theme) : -1;
-  return recs.filter(r => {
-    if (use.periode !== false && !tfPeriodMatch(r.m, f.periode)) return false;
-    if (pIdx >= 0 && r.p !== pIdx) return false;
-    if (tIdx >= 0 && r.t.indexOf(tIdx) < 0) return false;
-    return true;
-  });
+  const TF = DATA.tf2026;
+  if (use.periode !== false && !tfPerMatch(r, f.periode)) return false;
+  if (use.plat !== false && f.plat !== "__all__" && TF.plateformes[r.p] !== f.plat) return false;
+  if (use.theme !== false && f.theme !== "__all__") {
+    const ti = TF.thematiques.indexOf(f.theme);
+    if (r.t.indexOf(ti) < 0) return false;
+  }
+  if (use.dec !== false && f.dec !== "__all__" && TF.decisions[r.d].label !== f.dec) return false;
+  if (use.tc !== false && f.tc !== "__all__" && TF.types_contenu[r.tc] !== f.tc) return false;
+  if (use.genre !== false && f.genre !== "__all__" && TF.genres[r.g] !== f.genre) return false;
+  if (use.tranche !== false && f.tranche !== "__all__" && TF_TRANCHES[tfTranche(r.a)] !== f.tranche) return false;
+  return true;
 }
+function tfFilter(f, use) { return DATA.tf2026.records.filter(r => tfMatch(r, f, use)); }
+
+/* ---------- agrégats ---------- */
 function tfDelais(recs) {
-  const v = []; recs.forEach(r => { if (r.d !== undefined && r.d !== null) v.push(r.d); });
-  if (!v.length) return { n: 0, mean: null, median: null, min: null, max: null };
+  const v = []; let inc = 0;
+  recs.forEach(r => { if (r.dl !== undefined) v.push(r.dl); if (r.dlx) inc++; });
+  if (!v.length) return { n: 0, inc: inc, mean: null, median: null, min: null, max: null, vals: v };
   v.sort((a, b) => a - b);
   const mid = Math.floor(v.length / 2);
   const med = v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
-  return { n: v.length, mean: Math.round(v.reduce((s, x) => s + x, 0) / v.length * 10) / 10, median: med, min: v[0], max: v[v.length - 1] };
+  return { n: v.length, inc: inc, mean: Math.round(v.reduce((s, x) => s + x, 0) / v.length * 10) / 10,
+    median: med, min: v[0], max: v[v.length - 1], vals: v };
+}
+function tfAges(recs) {
+  const v = []; recs.forEach(r => { if (r.a !== undefined) v.push(r.a); });
+  if (!v.length) return { n: 0, mean: null, median: null };
+  v.sort((a, b) => a - b);
+  const mid = Math.floor(v.length / 2);
+  return { n: v.length, mean: Math.round(v.reduce((s, x) => s + x, 0) / v.length * 10) / 10,
+    median: v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2 };
 }
 function tfAgg(recs) {
-  let relT = 0, rel = 0, rens = 0, rep = 0, refus = 0, repS = 0, repA = 0;
-  recs.forEach(r => {
-    relT += r.rl || 0; const re = (r.rl || 0) > 0; if (re) rel++;
-    if (r.ty !== "non_renseigne") rens++;
-    const isRep = (r.ty === "action" || r.ty === "refus");
-    if (isRep) { rep++; if (re) repA++; else repS++; }
-    if (r.ty === "refus") refus++;
-  });
-  const env = recs.length, nonRens = env - rens;
-  return { env: env, relT: relT, rel: rel, tauxRel: pctSafe(rel, env), rens: rens, nonRens: nonRens,
-    tauxNonRens: pctSafe(nonRens, env), rep: rep, repS: repS, repA: repA,
-    tauxRep: pctSafe(rep, rens), refus: refus, tauxRefus: pctSafe(refus, rep), del: tfDelais(recs) };
+  const fam = {}; TF_FAM_ORDRE.forEach(f => fam[f] = 0);
+  let rel = 0;
+  recs.forEach(r => { fam[tfFam(r)]++; if (r.rl) rel++; });
+  const env = recs.length;
+  const nonRens = fam.non_renseigne, sansRep = fam.pas_de_reponse;
+  const rens = env - nonRens;                        /* décision renseignée */
+  const rep = rens - sansRep;                        /* réponse reçue (décision hors « pas de réponse ») */
+  const supp = fam.suppression_compte + fam.suppression_contenu;
+  return {
+    env: env, fam: fam, rel: rel,
+    rens: rens, rep: rep, sansRep: sansRep, nonRens: nonRens, sansRepNR: sansRep + nonRens,
+    tauxRep: pctSafe(rep, env),                      /* dénominateur : signalements envoyés */
+    tauxSansRepNR: pctSafe(sansRep + nonRens, env),  /* dénominateur : signalements envoyés */
+    tauxNonRens: pctSafe(nonRens, env),
+    supp: supp, tauxSupp: pctSafe(supp, rens),       /* dénominateur : décisions renseignées */
+    tauxSuppC: pctSafe(fam.suppression_contenu, rens),
+    tauxSuppK: pctSafe(fam.suppression_compte, rens),
+    tauxNonViol: pctSafe(fam.non_violation, rens),
+    tauxRel: pctSafe(rel, env),
+    del: tfDelais(recs), ages: tfAges(recs)
+  };
 }
-function tfGroup(recs, byTheme) {
-  const TF = DATA.tf2026, g = {};
-  recs.forEach(r => { if (byTheme) r.t.forEach(ti => { (g[ti] = g[ti] || []).push(r); }); else { (g[r.p] = g[r.p] || []).push(r); } });
-  return Object.keys(g).map(k => ({ label: (byTheme ? TF.themes_index : TF.plats_index)[k], agg: tfAgg(g[k]) }))
+function tfGroupPlat(recs) {
+  const g = {};
+  recs.forEach(r => { (g[r.p] = g[r.p] || []).push(r); });
+  return Object.keys(g).map(k => ({ label: DATA.tf2026.plateformes[k], recs: g[k], agg: tfAgg(g[k]) }))
+    .sort((a, b) => b.agg.env - a.agg.env);
+}
+function tfGroupTheme(recs) {
+  const g = {};
+  recs.forEach(r => r.t.forEach(ti => { (g[ti] = g[ti] || []).push(r); }));
+  return Object.keys(g).map(k => ({ label: DATA.tf2026.thematiques[k], recs: g[k], agg: tfAgg(g[k]) }))
     .sort((a, b) => b.agg.env - a.agg.env);
 }
 function htmlHBarsPct(items, color) {
@@ -649,104 +741,652 @@ function htmlHBarsPct(items, color) {
       + '<div class="hbar-val">' + showNA(d.v, " %") + "</div></div>";
   }).join("") + "</div>";
 }
+function tfLibPeriode() {
+  const p = TF_F.periode;
+  if (p === "toutes") return "ensemble des données";
+  if (p === "2026") return "année 2026 (mois disponibles)";
+  if (p === "sans_date") return TF_AXES[TF_F.axe].sans.toLowerCase();
+  if (p.charAt(0) === "T") return p;
+  if (p.slice(0, 2) === "m:") return tfLibMois(p.slice(2));
+  return p;
+}
 
+/* ---------- squelette de l'onglet ---------- */
+const TF_VUES = [
+  { id: "global", label: "Vue globale" }, { id: "plateformes", label: "Plateformes" },
+  { id: "thematiques", label: "Thématiques" }, { id: "delais", label: "Délais de réponse" },
+  { id: "victimes", label: "Profil des victimes" }, { id: "decisions", label: "Décisions" },
+  { id: "croisements", label: "Croisements" }, { id: "comparaison", label: "Comparaison trimestrielle" },
+  { id: "methodo", label: "Méthodologie" }
+];
 function renderSignalements() {
   const TF = DATA.tf2026;
-  if (!TF) return '<p class="intro">Données indisponibles.</p>';
-  /* filtres dynamiques */
-  const moisDispo = []; TF.records.forEach(r => { if (moisDispo.indexOf(r.m) < 0) moisDispo.push(r.m); }); moisDispo.sort((a, b) => a - b);
-  let perOpts = '<option value="annee">Année 2026 complète</option><option value="Q1">T1 (janv.–mars)</option><option value="Q2">T2 (avr.–juin, partiel)</option>';
-  moisDispo.forEach(m => { perOpts += '<option value="m:' + m + '">' + esc(MOIS_COURT[String(m).padStart(2, "0")]) + ' 2026</option>'; });
-  let platOpts = '<option value="__all__">Toutes les plateformes</option>' + TF.plateformes.map(p => '<option value="' + escAttr(p) + '">' + esc(p) + "</option>").join("");
-  let themeOpts = '<option value="__all__">Toutes les thématiques</option>' + TF.thematiques.map(t => '<option value="' + escAttr(t) + '">' + esc(t) + "</option>").join("");
-
-  let h = '<p class="periode-tag">Données 2026</p>';
-  h += '<div class="tf-filtres">'
-    + '<label>Période<select id="tf-periode">' + perOpts + "</select></label>"
-    + '<label>Plateforme<select id="tf-plat">' + platOpts + "</select></label>"
-    + '<label>Thématique<select id="tf-theme">' + themeOpts + "</select></label>"
+  if (!TF || !TF.records) return '<p class="intro">Données indisponibles.</p>';
+  let h = '<p class="periode-tag">Signalements Trusted Flagger — fichiers T1 et T2 2026</p>';
+  h += '<div class="selecteur" id="tf-vues" role="tablist">'
+    + TF_VUES.map(v => '<button class="seg' + (v.id === TF_F.vue ? " actif" : "") + '" data-vue="' + v.id + '">' + esc(v.label) + "</button>").join("")
     + "</div>";
+  h += '<div class="tf-filtres" id="tf-filtres"></div>';
   h += '<div id="tf-zone"></div>';
   return h;
 }
 
-function tfFill() {
-  const TF = DATA.tf2026, zone = document.getElementById("tf-zone");
-  if (!zone) return;
-  const recs = TF.records;
-  const full = tfFilter(recs, TF_F, {});                 /* tous filtres */
-  const noPlat = tfFilter(recs, TF_F, { plat: false });  /* pour répartition/tableau plateforme */
-  const noTheme = tfFilter(recs, TF_F, { theme: false });/* pour répartition/tableau thématique */
-  const noPer = tfFilter(recs, TF_F, { periode: false });/* pour évolution mensuelle */
+/* filtres (reconstruits pour suivre l'axe temporel) */
+function tfOption(v, label, sel) { return '<option value="' + escAttr(v) + '"' + (v === sel ? " selected" : "") + ">" + esc(label) + "</option>"; }
+function tfConstruireFiltres() {
+  const TF = DATA.tf2026, box = document.getElementById("tf-filtres");
+  if (!box) return;
+  const dispo = tfMoisDispo();
+  let per = tfOption("toutes", "Toutes les périodes", TF_F.periode)
+    + tfOption("2026", "Année 2026 (mois disponibles)", TF_F.periode);
+  const trims = []; dispo.mois.forEach(m => { const t = tfTrimDe(m); if (trims.indexOf(t) < 0) trims.push(t); });
+  trims.forEach(t => { per += tfOption(t, t, TF_F.periode); });
+  dispo.mois.forEach(m => { per += tfOption("m:" + m, tfLibMois(m), TF_F.periode); });
+  if (dispo.sans) per += tfOption("sans_date", TF_AXES[TF_F.axe].sans, TF_F.periode);
+
+  let axe = ""; Object.keys(TF_AXES).forEach(k => { axe += tfOption(k, TF_AXES[k].label, TF_F.axe); });
+  const liste = (vals, sel, tous) => tfOption("__all__", tous, sel) + vals.map(v => tfOption(v, v, sel)).join("");
+  box.innerHTML =
+    "<label>Rattachement temporel<select id=\"tf-axe\">" + axe + "</select></label>"
+    + "<label>Période<select id=\"tf-periode\">" + per + "</select></label>"
+    + "<label>Plateforme<select id=\"tf-plat\">" + liste(TF.plateformes, TF_F.plat, "Toutes les plateformes") + "</select></label>"
+    + "<label>Thématique<select id=\"tf-theme\">" + liste(TF.thematiques, TF_F.theme, "Toutes les thématiques") + "</select></label>"
+    + "<label>Décision<select id=\"tf-dec\">" + liste(TF.decisions.map(d => d.label), TF_F.dec, "Toutes les décisions") + "</select></label>"
+    + "<label>Type de contenu<select id=\"tf-tc\">" + liste(TF.types_contenu, TF_F.tc, "Tous les types") + "</select></label>"
+    + "<label>Genre<select id=\"tf-genre\">" + liste(TF.genres, TF_F.genre, "Tous les genres") + "</select></label>"
+    + "<label>Tranche d'âge<select id=\"tf-tranche\">" + liste(TF_TRANCHES, TF_F.tranche, "Toutes les tranches") + "</select></label>"
+    + '<label>&nbsp;<button class="bouton bouton-secondaire" id="tf-reset" type="button">Réinitialiser</button></label>';
+  const wire = (id, key, aussiPeriode) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", () => {
+      TF_F[key] = el.value;
+      if (aussiPeriode) { TF_F.periode = "2026"; tfConstruireFiltres(); }
+      tfFill();
+    });
+  };
+  wire("tf-axe", "axe", true); wire("tf-periode", "periode");
+  wire("tf-plat", "plat"); wire("tf-theme", "theme"); wire("tf-dec", "dec");
+  wire("tf-tc", "tc"); wire("tf-genre", "genre"); wire("tf-tranche", "tranche");
+  const rz = document.getElementById("tf-reset");
+  if (rz) rz.addEventListener("click", () => {
+    TF_F.plat = TF_F.theme = TF_F.dec = TF_F.tc = TF_F.genre = TF_F.tranche = "__all__";
+    TF_F.periode = "2026"; TF_F.axe = "e";
+    tfConstruireFiltres(); tfFill();
+  });
+}
+
+/* ---------- briques d'affichage partagées ---------- */
+function tfEvolutionMensuelle(recsSansPeriode, titre, note) {
+  const dispo = tfMoisDispo();
+  const items = dispo.mois.map(m => ({ label: tfLibMois(m).replace(" 20", " "), v: recsSansPeriode.filter(r => tfYm(r) === m).length }));
+  const sans = recsSansPeriode.filter(r => !tfYm(r)).length;
+  let h = '<div class="bloc"><h3 class="bloc-titre">' + esc(titre) + '</h3><div class="graph">' + svgBars(items, BLEU) + "</div>";
+  const notes = [];
+  if (note) notes.push(note);
+  if (sans) notes.push(show(sans) + " signalement(s) sans date sur cet axe, non représenté(s) dans le graphique.");
+  if (notes.length) h += noteBox(esc(notes.join(" ")));
+  return h + "</div>";
+}
+function tfBlocFamilles(a) {
+  const items = TF_FAM_ORDRE.filter(f => a.fam[f] > 0).map(f => ({ label: TF_FAM_LABELS[f], v: a.fam[f] }));
+  return htmlHBars(items, GRIS);
+}
+const TF_CLASSES_DELAI = [
+  { label: "Le jour même", min: 0, max: 0 }, { label: "1 jour", min: 1, max: 1 },
+  { label: "2 à 3 jours", min: 2, max: 3 }, { label: "4 à 7 jours", min: 4, max: 7 },
+  { label: "8 à 14 jours", min: 8, max: 14 }, { label: "15 à 30 jours", min: 15, max: 30 },
+  { label: "Plus de 30 jours", min: 31, max: Infinity }
+];
+function tfDistribDelais(del) {
+  return TF_CLASSES_DELAI.map(c => ({ label: c.label, v: del.vals.filter(v => v >= c.min && v <= c.max).length }));
+}
+
+/* ---------- VUE GLOBALE ---------- */
+function tfVueGlobale(full, sel) {
   const a = tfAgg(full);
-
-  /* KPI */
+  const nbPlat = {}; full.forEach(r => nbPlat[r.p] = true);
   let h = '<div class="kpis hero">'
-    + kpi("Signalements envoyés", show(a.env), "sur la sélection", "primaire")
-    + kpi("Relances (total)", show(a.relT), "toutes relances", "")
-    + kpi("Signalements relancés", show(a.rel), "≥ 1 relance", "")
-    + kpi("Taux de relance", showNA(a.tauxRel, " %"), "relancés / envoyés", "")
-    + "</div><div class=\"kpis\">"
-    + kpi("Taux de réponse", showNA(a.tauxRep, " %"), "réponses / renseignés", "primaire")
-    + kpi("Taux de refus", showNA(a.tauxRefus, " %"), "refus / réponses", "")
-    + kpi("Taux de non-renseignement", showNA(a.tauxNonRens, " %"), "non renseignés / envoyés", (a.tauxNonRens != null && a.tauxNonRens >= 30) ? "vigilance" : "")
-    + kpi("Délai moyen de réponse", a.del.n ? show(a.del.mean) + " j" : "N/A", a.del.n ? "sur " + show(a.del.n) + " réponses datées" : "aucune date", "")
+    + kpi("Signalements envoyés", show(a.env), tfLibPeriode(), "primaire")
+    + kpi("Plateformes concernées", show(Object.keys(nbPlat).length), "sur la sélection", "")
+    + kpi("Réponses reçues", show(a.rep) + ' <span class="kpi-sub-inline">' + showNA(a.tauxRep, " %") + "</span>", "décision renseignée hors « pas de réponse » / envoyés", "")
+    + kpi("Sans réponse ou non renseigné", show(a.sansRepNR) + ' <span class="kpi-sub-inline">' + showNA(a.tauxSansRepNR, " %") + "</span>", "sur les signalements envoyés", (a.tauxSansRepNR != null && a.tauxSansRepNR >= 40) ? "vigilance" : "")
     + "</div>";
-  h += noteBox("Réponses obtenues <strong>sans relance</strong> : " + show(a.repS) + " — <strong>après relance</strong> : " + show(a.repA) + ". Délais (jours) — médian " + showNA(a.del.median) + ", min " + showNA(a.del.min) + ", max " + showNA(a.del.max) + " (sur " + show(a.del.n) + " lignes datées).");
+  h += '<div class="kpis">'
+    + kpi("Suppressions (contenu ou compte)", show(a.supp) + ' <span class="kpi-sub-inline">' + showNA(a.tauxSupp, " %") + "</span>", "parmi les décisions renseignées", "")
+    + kpi("Non violation des CGU", show(a.fam.non_violation) + ' <span class="kpi-sub-inline">' + showNA(a.tauxNonViol, " %") + "</span>", "parmi les décisions renseignées", "")
+    + kpi("Délai moyen de réponse", a.del.n ? show(a.del.mean) + " j" : "n.d.", a.del.n ? "sur " + show(a.del.n) + " délais calculables" : "aucun délai calculable", "")
+    + kpi("Délai médian", a.del.n ? show(a.del.median) + " j" : "n.d.", a.del.n ? "min " + show(a.del.min) + " j — max " + show(a.del.max) + " j" : "", "")
+    + "</div>";
+  h += tfEvolutionMensuelle(sel.noPer, "Évolution mensuelle des signalements (" + TF_AXES[TF_F.axe].label.toLowerCase() + ")",
+    "Le graphique ignore le filtre de période et applique les autres filtres.");
+  const byPlat = tfGroupPlat(sel.noPlat), byTheme = tfGroupTheme(sel.noTheme);
+  h += '<div class="bloc"><h3 class="bloc-titre">Signalements par plateforme (15 premières)</h3>'
+    + htmlHBars(byPlat.slice(0, 15).map(d => ({ label: d.label, v: d.agg.env })), BLEU) + "</div>";
+  h += '<div class="bloc"><h3 class="bloc-titre">Principales thématiques (15 premières)</h3>'
+    + htmlHBars(byTheme.slice(0, 15).map(d => ({ label: d.label, v: d.agg.env })), BLEU)
+    + noteBox("Thématiques non exclusives : un signalement multi-thématiques figure dans chacune de ses thématiques mais compte une seule fois dans le total global.") + "</div>";
+  h += '<div class="bloc"><h3 class="bloc-titre">Décisions des plateformes (par famille)</h3>' + tfBlocFamilles(a) + "</div>";
+  const byTc = {}; full.forEach(r => byTc[r.tc] = (byTc[r.tc] || 0) + 1);
+  h += '<div class="bloc"><h3 class="bloc-titre">Types de contenus signalés</h3>'
+    + htmlHBars(Object.keys(byTc).map(k => ({ label: DATA.tf2026.types_contenu[k], v: byTc[k] })).sort((x, y) => y.v - x.v), JAUNE) + "</div>";
+  const byG = {}; full.forEach(r => byG[r.g] = (byG[r.g] || 0) + 1);
+  h += '<div class="bloc"><h3 class="bloc-titre">Répartition par genre</h3>'
+    + htmlHBars(Object.keys(byG).map(k => ({ label: DATA.tf2026.genres[k], v: byG[k] })).sort((x, y) => y.v - x.v), BLEU) + "</div>";
+  const byTr = [0, 0, 0, 0, 0, 0]; full.forEach(r => byTr[tfTranche(r.a)]++);
+  h += '<div class="bloc"><h3 class="bloc-titre">Répartition par tranche d\'âge</h3>'
+    + htmlHBars(TF_TRANCHES.map((t, i) => ({ label: t, v: byTr[i] })).filter(d => d.v > 0), BLEU) + "</div>";
+  return h;
+}
 
-  /* Évolution mensuelle (filtres plateforme + thématique, toutes périodes) */
-  const months = [1, 2, 3, 4, 5, 6];
-  const evoSig = months.map(m => ({ label: MOIS_COURT[String(m).padStart(2, "0")], v: noPer.filter(r => r.m === m).length }));
-  const evoRel = months.map(m => ({ label: MOIS_COURT[String(m).padStart(2, "0")], v: noPer.filter(r => r.m === m).reduce((s, r) => s + (r.rl || 0), 0) }));
-  const idxJuin = 5;
-  h += '<div class="bloc"><h3 class="bloc-titre">Évolution mensuelle des signalements</h3><div class="graph">' + svgBars(evoSig, BLEU, idxJuin) + "</div>" + noteBox("Juin partiel.") + "</div>";
-  h += '<div class="bloc"><h3 class="bloc-titre">Évolution mensuelle des relances</h3><div class="graph">' + svgBars(evoRel, JAUNE, idxJuin) + "</div></div>";
-
-  /* Répartitions */
-  const byPlat = tfGroup(noPlat, false), byTheme = tfGroup(noTheme, true), byCat = (function () { const c = {}; full.forEach(r => { c[r.c] = (c[r.c] || 0) + 1; }); return Object.keys(c).map(k => ({ label: TF.cats_index[k], v: c[k] })).sort((x, y) => y.v - x.v); })();
-  h += '<div class="bloc"><h3 class="bloc-titre">Répartition par plateforme</h3>' + htmlHBars(byPlat.slice(0, 12).map(d => ({ label: d.label, v: d.agg.env })), BLEU) + "</div>";
-  h += '<div class="bloc"><h3 class="bloc-titre">Répartition par thématique</h3>' + htmlHBars(byTheme.slice(0, 12).map(d => ({ label: d.label, v: d.agg.env })), BLEU) + noteBox("Thématiques non exclusives.") + "</div>";
-  h += '<div class="bloc"><h3 class="bloc-titre">Répartition des catégories de réponse</h3>' + htmlHBars(byCat.map(d => ({ label: d.label, v: d.v })), GRIS) + "</div>";
-
-  /* Taux par plateforme (top 12 par volume) */
-  const topP = byPlat.slice(0, 12);
-  h += '<div class="bloc"><h3 class="bloc-titre">Taux de réponse par plateforme</h3>' + htmlHBarsPct(topP.map(d => ({ label: d.label, v: d.agg.tauxRep })), VERT) + "</div>";
-  h += '<div class="bloc"><h3 class="bloc-titre">Taux de refus par plateforme</h3>' + htmlHBarsPct(topP.map(d => ({ label: d.label, v: d.agg.tauxRefus })), ROUGE) + "</div>";
-  h += '<div class="bloc"><h3 class="bloc-titre">Taux de non-renseignement par plateforme</h3>' + htmlHBarsPct(topP.map(d => ({ label: d.label, v: d.agg.tauxNonRens })), JAUNE) + "</div>";
-  h += '<div class="bloc"><h3 class="bloc-titre">Délai moyen de réponse par plateforme (jours)</h3>' + htmlHBars(topP.map(d => ({ label: d.label, v: d.agg.del.mean })), BLEU) + "</div>";
-
-  /* Tableau par plateforme */
-  const totEnvP = byPlat.reduce((s, d) => s + d.agg.env, 0);
-  h += '<div class="bloc"><h3 class="bloc-titre">Tableau comparatif par plateforme</h3><div class="table-enveloppe"><table><thead><tr>'
-    + "<th>Plateforme</th><th>Envoyés</th><th>Part</th><th>Relances</th><th>Relancés</th><th>Taux relance</th><th>Renseignés</th><th>Non rens.</th><th>Tx non-rens.</th><th>Tx réponse</th><th>Tx refus</th><th>Délai moy.</th><th>Médian</th><th>Min</th><th>Max</th>"
+/* ---------- PLATEFORMES ---------- */
+function tfVuePlateformes(full, sel) {
+  const byPlat = tfGroupPlat(sel.noPlat);
+  const tot = byPlat.reduce((s, d) => s + d.agg.env, 0);
+  let h = '<div class="bloc"><h3 class="bloc-titre">Tableau complet par plateforme</h3><div class="table-enveloppe"><table><thead><tr>'
+    + "<th>Plateforme</th><th>Envoyés</th><th>Part</th><th>Réponses</th><th>Tx réponse</th><th>Non rens.</th><th>Tx non-rens.</th><th>Suppr.</th><th>Tx suppr.*</th><th>Non-viol.</th><th>Tx non-viol.*</th><th>Délai moy.</th><th>Médian</th><th>Min</th><th>Max</th>"
     + "</tr></thead><tbody>";
   byPlat.forEach(d => {
     const g = d.agg;
-    h += "<tr><td>" + esc(d.label) + "</td>" + td(g.env) + tdNA(pctSafe(g.env, totEnvP), " %") + td(g.relT) + td(g.rel) + tdNA(g.tauxRel, " %")
-      + td(g.rens) + td(g.nonRens) + tdNA(g.tauxNonRens, " %") + tdNA(g.tauxRep, " %") + tdNA(g.tauxRefus, " %")
+    h += "<tr><td>" + esc(d.label) + "</td>" + td(g.env) + tdNA(pctSafe(g.env, tot), " %")
+      + td(g.rep) + tdNA(g.tauxRep, " %") + td(g.nonRens) + tdNA(g.tauxNonRens, " %")
+      + td(g.supp) + tdNA(g.tauxSupp, " %") + td(g.fam.non_violation) + tdNA(g.tauxNonViol, " %")
       + tdNA(g.del.mean) + tdNA(g.del.median) + tdNA(g.del.min) + tdNA(g.del.max) + "</tr>";
   });
-  h += "</tbody></table></div></div>";
+  h += "</tbody></table></div>"
+    + noteBox("Toutes les plateformes présentes dans les données sont listées. * Taux de suppression et de non-violation calculés parmi les décisions renseignées de la plateforme ; taux de réponse et de non-renseignement calculés sur les signalements envoyés.") + "</div>";
+  /* détail : plateforme sélectionnée dans le filtre */
+  if (TF_F.plat !== "__all__") {
+    const recsP = full;
+    const aP = tfAgg(recsP);
+    h += '<div class="bloc"><h3 class="bloc-titre">Détail — ' + esc(TF_F.plat) + "</h3>"
+      + '<div class="kpis">'
+      + kpi("Signalements envoyés", show(aP.env), tfLibPeriode(), "primaire")
+      + kpi("Taux de réponse", showNA(aP.tauxRep, " %"), "réponses / envoyés", "")
+      + kpi("Taux de suppression", showNA(aP.tauxSupp, " %"), "parmi décisions renseignées", "")
+      + kpi("Délai moyen", aP.del.n ? show(aP.del.mean) + " j" : "n.d.", "sur " + show(aP.del.n) + " délais calculables", "")
+      + "</div>";
+    h += tfEvolutionMensuelle(sel.noPer, "Évolution mensuelle — " + TF_F.plat);
+    h += '<div class="bloc"><h3 class="bloc-titre">Principales thématiques — ' + esc(TF_F.plat) + "</h3>"
+      + htmlHBars(tfGroupTheme(recsP).slice(0, 12).map(d => ({ label: d.label, v: d.agg.env })), BLEU) + "</div>";
+    h += '<div class="bloc"><h3 class="bloc-titre">Décisions — ' + esc(TF_F.plat) + "</h3>" + tfBlocFamilles(aP) + "</div></div>";
+  } else {
+    h += noteBox("Sélectionnez une plateforme dans les filtres ci-dessus pour afficher son détail : évolution mensuelle, thématiques et décisions.");
+  }
+  return h;
+}
 
-  /* Tableau par thématique */
-  const totEnvT = byTheme.reduce((s, d) => s + d.agg.env, 0);
-  h += '<div class="bloc"><h3 class="bloc-titre">Tableau comparatif par thématique</h3><div class="table-enveloppe"><table><thead><tr>'
-    + "<th>Thématique</th><th>Envoyés</th><th>Part</th><th>Relances</th><th>Taux relance</th><th>Tx non-rens.</th><th>Tx réponse</th><th>Tx refus</th><th>Délai moy.</th><th>Médian</th><th>Min</th><th>Max</th>"
+/* ---------- THÉMATIQUES ---------- */
+function tfVueThematiques(full, sel) {
+  const byTheme = tfGroupTheme(sel.noTheme);
+  const totalDistinct = sel.noTheme.length;
+  let h = '<div class="bloc"><h3 class="bloc-titre">Tableau complet par thématique</h3><div class="table-enveloppe"><table><thead><tr>'
+    + "<th>Thématique</th><th>Signalements</th><th>Part*</th><th>Tx réponse</th><th>Tx non-rens.</th><th>Tx suppr.**</th><th>Délai moy.</th><th>Âge moyen</th>"
     + "</tr></thead><tbody>";
   byTheme.forEach(d => {
     const g = d.agg;
-    h += "<tr><td>" + esc(d.label) + "</td>" + td(g.env) + tdNA(pctSafe(g.env, totEnvT), " %") + td(g.relT) + tdNA(g.tauxRel, " %")
-      + tdNA(g.tauxNonRens, " %") + tdNA(g.tauxRep, " %") + tdNA(g.tauxRefus, " %")
-      + tdNA(g.del.mean) + tdNA(g.del.median) + tdNA(g.del.min) + tdNA(g.del.max) + "</tr>";
+    h += "<tr><td>" + esc(d.label) + "</td>" + td(g.env) + tdNA(pctSafe(g.env, totalDistinct), " %")
+      + tdNA(g.tauxRep, " %") + tdNA(g.tauxNonRens, " %") + tdNA(g.tauxSupp, " %")
+      + tdNA(g.del.mean) + tdNA(g.ages.mean) + "</tr>";
   });
-  h += "</tbody></table></div>" + noteBox("Thématiques non exclusives.") + "</div>";
+  h += "</tbody></table></div>"
+    + noteBox("Toutes les thématiques du fichier source sont reprises, sans regroupement. * Part calculée sur les " + show(totalDistinct) + " signalements distincts de la sélection : un signalement multi-thématiques figure dans plusieurs lignes, la somme des parts peut donc dépasser 100 %. ** Parmi les décisions renseignées.") + "</div>";
+  if (TF_F.theme !== "__all__") {
+    const aT = tfAgg(full);
+    h += '<div class="bloc"><h3 class="bloc-titre">Détail — ' + esc(TF_F.theme) + "</h3>"
+      + '<div class="kpis">'
+      + kpi("Signalements", show(aT.env), tfLibPeriode(), "primaire")
+      + kpi("Taux de réponse", showNA(aT.tauxRep, " %"), "réponses / envoyés", "")
+      + kpi("Délai moyen", aT.del.n ? show(aT.del.mean) + " j" : "n.d.", "sur " + show(aT.del.n) + " délais calculables", "")
+      + kpi("Âge moyen", showNA(aT.ages.mean), "sur " + show(aT.ages.n) + " âges renseignés", "")
+      + "</div>";
+    h += tfEvolutionMensuelle(sel.noPer, "Évolution mensuelle — " + TF_F.theme);
+    h += '<div class="bloc"><h3 class="bloc-titre">Plateformes concernées</h3>'
+      + htmlHBars(tfGroupPlat(full).slice(0, 12).map(d => ({ label: d.label, v: d.agg.env })), BLEU) + "</div>";
+    h += '<div class="bloc"><h3 class="bloc-titre">Décisions obtenues</h3>' + tfBlocFamilles(aT) + "</div>";
+    const byG = {}; full.forEach(r => byG[r.g] = (byG[r.g] || 0) + 1);
+    h += '<div class="bloc"><h3 class="bloc-titre">Genre</h3>'
+      + htmlHBars(Object.keys(byG).map(k => ({ label: DATA.tf2026.genres[k], v: byG[k] })).sort((x, y) => y.v - x.v), BLEU) + "</div></div>";
+  } else {
+    h += noteBox("Sélectionnez une thématique dans les filtres ci-dessus pour afficher son détail : évolution mensuelle, plateformes, décisions et genre.");
+  }
+  return h;
+}
 
-  /* Détail catégories de réponse */
-  h += '<div class="bloc"><h3 class="bloc-titre">Détail des catégories de réponse</h3><div class="table-enveloppe"><table><thead><tr><th>Catégorie (libellé exact)</th><th>Nombre</th><th>Part</th></tr></thead><tbody>';
-  byCat.forEach(d => { h += "<tr><td style=\"text-align:left\">" + esc(d.label) + "</td>" + td(d.v) + tdNA(pctSafe(d.v, a.env), " %") + "</tr>"; });
-  h += "</tbody></table></div>" + noteBox("« Non renseigné » (cellule vide) distinct de « Pas de réponse ».") + "</div>";
+/* ---------- DÉLAIS ---------- */
+function tfVueDelais(full, sel) {
+  const a = tfAgg(full), del = a.del;
+  let h = '<div class="kpis hero">'
+    + kpi("Délais calculables", show(del.n) + ' <span class="kpi-sub-inline">' + showNA(pctSafe(del.n, a.env), " %") + "</span>", "envoi et première réponse datés / envoyés", "primaire")
+    + kpi("Délai moyen", del.n ? show(del.mean) + " j" : "n.d.", "", "")
+    + kpi("Délai médian", del.n ? show(del.median) + " j" : "n.d.", "", "")
+    + kpi("Min — Max", del.n ? show(del.min) + " — " + show(del.max) + " j" : "n.d.", "", "")
+    + "</div>";
+  h += noteBox("Délai = date de première réponse de la plateforme − date d'envoi du signalement. Jamais calculé quand une des deux dates est absente : une date manquante ne devient jamais zéro."
+    + (del.inc ? " " + show(del.inc) + " ligne(s) avec réponse antérieure à l'envoi (incohérence de saisie) écartée(s) des statistiques." : ""));
+  h += '<div class="bloc"><h3 class="bloc-titre">Distribution des délais</h3>'
+    + htmlHBars(tfDistribDelais(del), BLEU) + "</div>";
+  const byPlat = tfGroupPlat(sel.noPlat).filter(d => d.agg.del.n > 0);
+  h += '<div class="bloc"><h3 class="bloc-titre">Délai moyen par plateforme (jours)</h3>'
+    + htmlHBars(byPlat.slice(0, 15).map(d => ({ label: d.label + " (" + d.agg.del.n + ")", v: d.agg.del.mean })), BLEU)
+    + noteBox("Entre parenthèses : nombre de délais calculables.") + "</div>";
+  const byDec = {};
+  full.forEach(r => { if (r.dl !== undefined) (byDec[r.d] = byDec[r.d] || []).push(r.dl); });
+  const decItems = Object.keys(byDec).map(k => {
+    const v = byDec[k];
+    return { label: DATA.tf2026.decisions[k].label + " (" + v.length + ")", v: Math.round(v.reduce((s, x) => s + x, 0) / v.length * 10) / 10, n: v.length };
+  }).sort((x, y) => y.n - x.n);
+  h += '<div class="bloc"><h3 class="bloc-titre">Délai moyen par décision (jours)</h3>' + htmlHBars(decItems, GRIS) + "</div>";
+  const byTheme = tfGroupTheme(sel.noTheme).filter(d => d.agg.del.n > 0);
+  h += '<div class="bloc"><h3 class="bloc-titre">Délai moyen par thématique (jours)</h3>'
+    + htmlHBars(byTheme.slice(0, 15).map(d => ({ label: d.label + " (" + d.agg.del.n + ")", v: d.agg.del.mean })), BLEU) + "</div>";
+  return h;
+}
 
+/* ---------- PROFIL DES VICTIMES ---------- */
+function tfVueVictimes(full, sel) {
+  const TF = DATA.tf2026, a = tfAgg(full);
+  const byG = {}; full.forEach(r => byG[r.g] = (byG[r.g] || 0) + 1);
+  let h = '<div class="kpis hero">'
+    + kpi("Âges renseignés", show(a.ages.n) + ' <span class="kpi-sub-inline">' + showNA(pctSafe(a.ages.n, a.env), " %") + "</span>", "sur les signalements de la sélection", "primaire")
+    + kpi("Âge moyen", showNA(a.ages.mean), a.ages.n ? "sur " + show(a.ages.n) + " âges renseignés" : "", "")
+    + kpi("Âge médian", showNA(a.ages.median), "", "")
+    + kpi("Genre non renseigné", show(byG[TF.genres.indexOf("Non renseigné")] || 0), "affiché, jamais exclu en silence", "")
+    + "</div>";
+  h += '<div class="bloc"><h3 class="bloc-titre">Répartition par genre</h3>'
+    + htmlHBars(Object.keys(byG).map(k => ({ label: TF.genres[k] + " (" + showNA(pctSafe(byG[k], a.env), " %") + ")", v: byG[k] })).sort((x, y) => y.v - x.v), BLEU) + "</div>";
+  const byTr = [0, 0, 0, 0, 0, 0]; full.forEach(r => byTr[tfTranche(r.a)]++);
+  h += '<div class="bloc"><h3 class="bloc-titre">Répartition par tranche d\'âge</h3>'
+    + htmlHBars(TF_TRANCHES.map((t, i) => ({ label: t + " (" + showNA(pctSafe(byTr[i], a.env), " %") + ")", v: byTr[i] })), BLEU) + "</div>";
+  const byAge = {}; full.forEach(r => { if (r.a !== undefined) byAge[r.a] = (byAge[r.a] || 0) + 1; });
+  const ages = Object.keys(byAge).map(Number).sort((x, y) => x - y);
+  if (ages.length) {
+    h += '<div class="bloc"><h3 class="bloc-titre">Distribution des âges renseignés</h3><div class="graph">'
+      + svgBars(ages.map(x => ({ label: String(x), v: byAge[x] })), BLEU) + "</div></div>";
+  }
+  /* genre par plateforme */
+  const byPlat = tfGroupPlat(sel.noPlat).slice(0, 8);
+  h += '<div class="bloc"><h3 class="bloc-titre">Genre par plateforme (8 premières)</h3><div class="table-enveloppe"><table><thead><tr><th>Plateforme</th>'
+    + TF.genres.map(g => "<th>" + esc(g) + "</th>").join("") + "<th>Total</th></tr></thead><tbody>";
+  byPlat.forEach(d => {
+    const c = {}; d.recs.forEach(r => c[r.g] = (c[r.g] || 0) + 1);
+    h += "<tr><td>" + esc(d.label) + "</td>" + TF.genres.map((g, i) => td(c[i] || 0)).join("") + td(d.recs.length) + "</tr>";
+  });
+  h += "</tbody></table></div></div>";
+  /* âge moyen par thématique */
+  const byTheme = tfGroupTheme(sel.noTheme).filter(d => d.agg.ages.n > 0);
+  h += '<div class="bloc"><h3 class="bloc-titre">Âge moyen par thématique</h3>'
+    + htmlHBars(byTheme.slice(0, 15).map(d => ({ label: d.label + " (" + d.agg.ages.n + ")", v: d.agg.ages.mean })), JAUNE)
+    + noteBox("Entre parenthèses : nombre d'âges renseignés. Les âges non renseignés restent visibles dans les répartitions ci-dessus (catégorie « Non renseigné »).") + "</div>";
+  return h;
+}
+
+/* ---------- DÉCISIONS ---------- */
+function tfVueDecisions(full, sel) {
+  const TF = DATA.tf2026, a = tfAgg(full);
+  let h = '<div class="kpis hero">'
+    + kpi("Réponses reçues", show(a.rep) + ' <span class="kpi-sub-inline">' + showNA(a.tauxRep, " %") + "</span>", "décision renseignée hors « pas de réponse » / envoyés", "primaire")
+    + kpi("Non renseigné", show(a.nonRens) + ' <span class="kpi-sub-inline">' + showNA(a.tauxNonRens, " %") + "</span>", "cellule décision vide / envoyés", "")
+    + kpi("Pas de réponse (explicite)", show(a.sansRep) + ' <span class="kpi-sub-inline">' + showNA(pctSafe(a.sansRep, a.env), " %") + "</span>", "constat saisi / envoyés — distinct du non-renseigné", "")
+    + kpi("Décisions renseignées", show(a.rens) + ' <span class="kpi-sub-inline">' + showNA(pctSafe(a.rens, a.env), " %") + "</span>", "dénominateur des taux de décision ci-dessous", "")
+    + "</div>";
+  h += '<div class="kpis">'
+    + kpi("Suppressions de contenu", show(a.fam.suppression_contenu) + ' <span class="kpi-sub-inline">' + showNA(a.tauxSuppC, " %") + "</span>", "parmi décisions renseignées", "")
+    + kpi("Suppressions de compte", show(a.fam.suppression_compte) + ' <span class="kpi-sub-inline">' + showNA(a.tauxSuppK, " %") + "</span>", "parmi décisions renseignées", "")
+    + kpi("Avertissements", show(a.fam.avertissement) + ' <span class="kpi-sub-inline">' + showNA(pctSafe(a.fam.avertissement, a.rens), " %") + "</span>", "parmi décisions renseignées", "")
+    + kpi("Non violation des CGU", show(a.fam.non_violation) + ' <span class="kpi-sub-inline">' + showNA(a.tauxNonViol, " %") + "</span>", "parmi décisions renseignées", "")
+    + kpi("URL introuvables", show(a.fam.url_introuvable) + ' <span class="kpi-sub-inline">' + showNA(pctSafe(a.fam.url_introuvable, a.rens), " %") + "</span>", "parmi décisions renseignées", "")
+    + kpi("Demandes d'informations", show(a.fam.demande_infos) + ' <span class="kpi-sub-inline">' + showNA(pctSafe(a.fam.demande_infos, a.rens), " %") + "</span>", "parmi décisions renseignées", "")
+    + "</div>";
+  h += noteBox("Les absences de réponse ne sont jamais assimilées à un refus : « Non renseigné » (cellule vide) et « Pas de réponse » (constat explicite) sont comptés à part et exclus du dénominateur des taux de décision.");
+  /* toutes les décisions, libellé exact */
+  const byD = {}; full.forEach(r => byD[r.d] = (byD[r.d] || 0) + 1);
+  h += '<div class="bloc"><h3 class="bloc-titre">Toutes les décisions (libellés du fichier source)</h3><div class="table-enveloppe"><table><thead><tr>'
+    + "<th>Décision</th><th>Famille</th><th>Nombre</th><th>Part / envoyés</th><th>Part / renseignées</th></tr></thead><tbody>";
+  Object.keys(byD).sort((x, y) => byD[y] - byD[x]).forEach(k => {
+    const d = TF.decisions[k], fam = d.famille;
+    h += '<tr><td style="text-align:left">' + esc(d.label) + '</td><td style="text-align:left">' + esc(TF_FAM_LABELS[fam]) + "</td>"
+      + td(byD[k]) + tdNA(pctSafe(byD[k], a.env), " %")
+      + (fam === "non_renseigne" ? '<td class="nd">—</td>' : tdNA(pctSafe(byD[k], a.rens), " %")) + "</tr>";
+  });
+  h += "</tbody></table></div></div>";
+  /* décisions par plateforme */
+  const byPlat = tfGroupPlat(sel.noPlat).slice(0, 8);
+  const famAff = TF_FAM_ORDRE.filter(f => a.fam[f] > 0 || byPlat.some(p => p.agg.fam[f] > 0));
+  h += '<div class="bloc"><h3 class="bloc-titre">Décisions par plateforme (8 premières, par famille)</h3><div class="table-enveloppe"><table><thead><tr><th>Plateforme</th>'
+    + famAff.map(f => "<th>" + esc(TF_FAM_LABELS[f]) + "</th>").join("") + "<th>Total</th></tr></thead><tbody>";
+  byPlat.forEach(d => {
+    h += "<tr><td>" + esc(d.label) + "</td>" + famAff.map(f => td(d.agg.fam[f])).join("") + td(d.agg.env) + "</tr>";
+  });
+  h += "</tbody></table></div></div>";
+  /* décisions par thématique */
+  const byTheme = tfGroupTheme(sel.noTheme).slice(0, 10);
+  h += '<div class="bloc"><h3 class="bloc-titre">Décisions par thématique (10 premières, par famille)</h3><div class="table-enveloppe"><table><thead><tr><th>Thématique</th>'
+    + famAff.map(f => "<th>" + esc(TF_FAM_LABELS[f]) + "</th>").join("") + "<th>Total</th></tr></thead><tbody>";
+  byTheme.forEach(d => {
+    h += "<tr><td>" + esc(d.label) + "</td>" + famAff.map(f => td(d.agg.fam[f])).join("") + td(d.agg.env) + "</tr>";
+  });
+  h += "</tbody></table></div>" + noteBox("Thématiques non exclusives : un même signalement peut figurer dans plusieurs lignes.") + "</div>";
+  /* suites : relances, dernières décisions */
+  const avecDD = full.filter(r => r.dd !== undefined);
+  h += '<div class="bloc"><h3 class="bloc-titre">Relances et suites</h3><div class="kpis">'
+    + kpi("Signalements relancés", show(a.rel) + ' <span class="kpi-sub-inline">' + showNA(a.tauxRel, " %") + "</span>", "au moins une date de relance / envoyés", "")
+    + kpi("Dernière décision renseignée", show(avecDD.length), "décision distincte connue après relance ou réexamen", "")
+    + "</div>";
+  if (avecDD.length) {
+    const byDD = {}; avecDD.forEach(r => byDD[r.dd] = (byDD[r.dd] || 0) + 1);
+    h += '<div class="table-enveloppe" style="margin-top:14px"><table><thead><tr><th>Dernière décision (libellé exact)</th><th>Nombre</th></tr></thead><tbody>';
+    Object.keys(byDD).sort((x, y) => byDD[y] - byDD[x]).forEach(k => {
+      h += '<tr><td style="text-align:left">' + esc(TF.decisions_finales[k]) + "</td>" + td(byDD[k]) + "</tr>";
+    });
+    h += "</tbody></table></div>";
+  }
+  h += noteBox("Une relance n'est jamais comptée comme un nouveau signalement : elle est rattachée à la ligne du signalement initial. Les libellés de dernière décision sont restitués tels quels (saisie libre, non normalisée).") + "</div>";
+  return h;
+}
+
+/* ---------- CROISEMENTS ---------- */
+const TF_VARS = {
+  plateforme: { label: "Plateforme" }, thematique: { label: "Thématique" },
+  decision: { label: "Décision (libellé exact)" }, famille: { label: "Décision (famille)" },
+  genre: { label: "Genre" }, tranche: { label: "Tranche d'âge" },
+  type_contenu: { label: "Type de contenu" }, mois: { label: "Mois" }, trimestre: { label: "Trimestre" }
+};
+/* renvoie la ou les modalités d'un enregistrement pour une variable */
+function tfModalites(r, variable) {
+  const TF = DATA.tf2026;
+  switch (variable) {
+    case "plateforme": return [TF.plateformes[r.p]];
+    case "thematique": return r.t.map(ti => TF.thematiques[ti]);
+    case "decision": return [TF.decisions[r.d].label];
+    case "famille": return [TF_FAM_LABELS[tfFam(r)]];
+    case "genre": return [TF.genres[r.g]];
+    case "tranche": return [TF_TRANCHES[tfTranche(r.a)]];
+    case "type_contenu": return [TF.types_contenu[r.tc]];
+    case "mois": return [tfLibMois(tfYm(r))];
+    case "trimestre": return [tfTrimDe(tfYm(r)) || "Sans date"];
+    default: return ["?"];
+  }
+}
+function tfVueCroisements(full) {
+  const opts = sel => Object.keys(TF_VARS).map(k => tfOption(k, TF_VARS[k].label, sel)).join("");
+  let h = '<div class="tf-filtres">'
+    + '<label>Variable en lignes<select id="cr-l">' + opts(TF_F.crL) + "</select></label>"
+    + '<label>Variable en colonnes<select id="cr-c">' + opts(TF_F.crC) + "</select></label>"
+    + '<label>Affichage<select id="cr-mode">'
+    + tfOption("eff", "Effectifs", TF_F.crMode) + tfOption("pl", "% en ligne", TF_F.crMode)
+    + tfOption("pc", "% en colonne", TF_F.crMode) + tfOption("pt", "% du total", TF_F.crMode)
+    + "</select></label>"
+    + '<label>&nbsp;<button class="bouton bouton-secondaire" id="cr-export" type="button">Exporter le tableau (Excel)</button></label>'
+    + "</div>";
+  h += noteBox("Le croisement applique les filtres généraux (période, plateforme, thématique, décision, type de contenu, genre, tranche d'âge).");
+  h += '<div id="cr-table"></div>';
+  return h;
+}
+function tfCross(full) {
+  /* construit la matrice du croisement courant */
+  const rowsM = {}, colsM = {}, cells = {};
+  full.forEach(r => {
+    tfModalites(r, TF_F.crL).forEach(rm => {
+      rowsM[rm] = (rowsM[rm] || 0) + 1;
+      tfModalites(r, TF_F.crC).forEach(cm => {
+        colsM[cm] = true;
+        const k = rm + "\u0001" + cm;
+        cells[k] = (cells[k] || 0) + 1;
+      });
+    });
+  });
+  /* recompte des colonnes indépendamment (une modalité colonne par record) */
+  const colsCount = {};
+  full.forEach(r => tfModalites(r, TF_F.crC).forEach(cm => colsCount[cm] = (colsCount[cm] || 0) + 1));
+  const rowKeys = Object.keys(rowsM).sort((x, y) => rowsM[y] - rowsM[x]);
+  const colKeys = Object.keys(colsCount).sort((x, y) => colsCount[y] - colsCount[x]);
+  let totalCells = 0; rowKeys.forEach(rk => colKeys.forEach(ck => totalCells += cells[rk + "\u0001" + ck] || 0));
+  return { rowKeys, colKeys, cells, totalCells, distinct: full.length };
+}
+function tfCrossFill(full) {
+  const zone = document.getElementById("cr-table");
+  if (!zone) return;
+  const m = tfCross(full);
+  const rowTot = {}, colTot = {};
+  m.rowKeys.forEach(rk => { rowTot[rk] = 0; m.colKeys.forEach(ck => rowTot[rk] += m.cells[rk + "\u0001" + ck] || 0); });
+  m.colKeys.forEach(ck => { colTot[ck] = 0; m.rowKeys.forEach(rk => colTot[ck] += m.cells[rk + "\u0001" + ck] || 0); });
+  const fmt = (v, rk, ck) => {
+    if (TF_F.crMode === "eff") return show(v);
+    let den = null;
+    if (TF_F.crMode === "pl") den = rowTot[rk];
+    else if (TF_F.crMode === "pc") den = colTot[ck];
+    else den = m.totalCells;
+    const p = pctSafe(v, den);
+    return p === null ? "n.d." : nf(p) + " %";
+  };
+  let h = '<div class="table-enveloppe" style="margin-top:14px"><table class="compact"><thead><tr><th>' + esc(TF_VARS[TF_F.crL].label) + " \\ " + esc(TF_VARS[TF_F.crC].label) + "</th>"
+    + m.colKeys.map(c => "<th>" + esc(c) + "</th>").join("") + "<th>Total ligne</th></tr></thead><tbody>";
+  m.rowKeys.forEach(rk => {
+    h += '<tr><td style="text-align:left">' + esc(rk) + "</td>"
+      + m.colKeys.map(ck => "<td>" + fmt(m.cells[rk + "\u0001" + ck] || 0, rk, ck) + "</td>").join("")
+      + "<td><strong>" + (TF_F.crMode === "eff" ? show(rowTot[rk]) : fmt(rowTot[rk], rk, null)) + "</strong></td></tr>";
+  });
+  h += '<tr class="ligne-total"><td>Total colonne</td>'
+    + m.colKeys.map(ck => "<td>" + (TF_F.crMode === "eff" ? show(colTot[ck]) : fmt(colTot[ck], null, ck)) + "</td>").join("")
+    + "<td>" + show(m.totalCells) + "</td></tr>";
+  h += "</tbody></table></div>";
+  let note = "Total général du tableau : " + show(m.totalCells) + " — signalements distincts filtrés : " + show(m.distinct) + ".";
+  if (m.totalCells !== m.distinct) note += " L'écart vient des variables à réponses multiples (thématiques) : un signalement peut compter dans plusieurs cases, mais une seule fois dans le total global des signalements.";
+  h += noteBox(esc(note));
   zone.innerHTML = h;
+}
+function tfCrossExport(full) {
+  const m = tfCross(full);
+  const rowTot = {}, colTot = {};
+  m.rowKeys.forEach(rk => { rowTot[rk] = 0; m.colKeys.forEach(ck => rowTot[rk] += m.cells[rk + "\u0001" + ck] || 0); });
+  m.colKeys.forEach(ck => { colTot[ck] = 0; m.rowKeys.forEach(rk => colTot[ck] += m.cells[rk + "\u0001" + ck] || 0); });
+  const rows = [["Croisement Trusted Flagger — " + TF_VARS[TF_F.crL].label + " × " + TF_VARS[TF_F.crC].label],
+    ["Période : " + tfLibPeriode() + " — rattachement : " + TF_AXES[TF_F.axe].label], [],
+    [TF_VARS[TF_F.crL].label].concat(m.colKeys).concat(["Total ligne"])];
+  m.rowKeys.forEach(rk => {
+    rows.push([rk].concat(m.colKeys.map(ck => NUM(m.cells[rk + "\u0001" + ck] || 0))).concat([NUM(rowTot[rk])]));
+  });
+  rows.push(["Total colonne"].concat(m.colKeys.map(ck => NUM(colTot[ck]))).concat([NUM(m.totalCells)]));
+  rows.push([]);
+  rows.push(["Signalements distincts filtrés", NUM(m.distinct)]);
+  if (m.totalCells !== m.distinct) rows.push(["Note", "Variables à réponses multiples : un signalement peut compter dans plusieurs cases."]);
+  const wb = XLSX.utils.book_new();
+  expAjouter(wb, "Croisement TF", expFeuille(rows));
+  XLSX.writeFile(wb, "croisement_trusted_flagger.xlsx");
+}
+
+/* ---------- COMPARAISON TRIMESTRIELLE ---------- */
+function tfTrimsDispo(recs) {
+  const set = {};
+  recs.forEach(r => { const t = tfTrimDe(tfYm(r)); if (t) set[t] = true; });
+  return Object.keys(set).sort((a, b) => (a.slice(3) + a.slice(1, 2)).localeCompare(b.slice(3) + b.slice(1, 2)));
+}
+function tfLigneComp(label, vA, vB, isPct, unite) {
+  let ecart = null, ecartPct = "n.c.";
+  if (vA != null && vB != null) {
+    ecart = Math.round((vB - vA) * 10) / 10;
+    if (isPct) ecartPct = (ecart > 0 ? "+" : "") + nf(ecart) + " pt";
+    else ecartPct = (vA === 0) ? "n.c." : (ecart > 0 ? "+" : "") + nf(Math.round(ecart / vA * 1000) / 10) + " %";
+  }
+  const f = v => (v == null) ? '<td class="nd">n.d.</td>' : "<td>" + nf(v) + (isPct ? " %" : (unite || "")) + "</td>";
+  return "<tr><td style=\"text-align:left\">" + esc(label) + "</td>" + f(vA) + f(vB)
+    + ((ecart == null) ? '<td class="nd">n.d.</td>' : "<td>" + (ecart > 0 ? "+" : "") + nf(ecart) + (isPct ? " pt" : "") + "</td>")
+    + "<td>" + esc(ecartPct) + "</td></tr>";
+}
+let TF_COMP = { a: null, b: null };
+function tfVueComparaison(sel) {
+  const trims = tfTrimsDispo(sel.noPer);
+  if (trims.length < 2) return noteBox("Au moins deux trimestres de données sont nécessaires pour la comparaison.");
+  /* par défaut : les deux trimestres les plus récents comptant 3 mois de données
+     (un trimestre entamé, ex. juillet seul, reste sélectionnable manuellement) */
+  const complets = trims.filter(t => {
+    const mois = {};
+    sel.noPer.forEach(r => { const v = tfYm(r); if (v && tfTrimDe(v) === t) mois[v] = true; });
+    return Object.keys(mois).length === 3;
+  });
+  const base = complets.length >= 2 ? complets : trims;
+  if (!TF_COMP.a || trims.indexOf(TF_COMP.a) < 0) TF_COMP.a = base[base.length - 2];
+  if (!TF_COMP.b || trims.indexOf(TF_COMP.b) < 0) TF_COMP.b = base[base.length - 1];
+  let h = '<div class="tf-filtres">'
+    + '<label>Trimestre A<select id="cp-a">' + trims.map(t => tfOption(t, t, TF_COMP.a)).join("") + "</select></label>"
+    + '<label>Trimestre B<select id="cp-b">' + trims.map(t => tfOption(t, t, TF_COMP.b)).join("") + "</select></label>"
+    + "</div>"
+    + noteBox("La comparaison applique les filtres généraux hors période, s'appuie sur la " + TF_AXES[TF_F.axe].label.toLowerCase() + " et s'étendra automatiquement aux trimestres futurs présents dans les données.");
+  h += '<div id="cp-zone"></div>';
+  return h;
+}
+function tfCompFill(sel) {
+  const zone = document.getElementById("cp-zone");
+  if (!zone) return;
+  const rA = sel.noPer.filter(r => tfTrimDe(tfYm(r)) === TF_COMP.a);
+  const rB = sel.noPer.filter(r => tfTrimDe(tfYm(r)) === TF_COMP.b);
+  const aA = tfAgg(rA), aB = tfAgg(rB);
+  let h = '<div class="kpis hero">'
+    + kpi("Signalements " + TF_COMP.a, show(aA.env), "", "primaire")
+    + kpi("Signalements " + TF_COMP.b, show(aB.env), "", "primaire")
+    + kpi("Évolution", (aA.env === 0) ? "n.c." : ((aB.env - aA.env > 0 ? "+" : "") + nf(aB.env - aA.env) + " (" + (aB.env - aA.env > 0 ? "+" : "") + nf(Math.round((aB.env - aA.env) / aA.env * 1000) / 10) + " %)"), TF_COMP.a + " → " + TF_COMP.b, "")
+    + "</div>";
+  h += '<div class="bloc"><h3 class="bloc-titre">Indicateurs comparés</h3><div class="table-enveloppe"><table><thead><tr>'
+    + "<th>Indicateur</th><th>" + esc(TF_COMP.a) + "</th><th>" + esc(TF_COMP.b) + "</th><th>Écart</th><th>Écart %</th></tr></thead><tbody>"
+    + tfLigneComp("Signalements envoyés", aA.env, aB.env)
+    + tfLigneComp("Réponses reçues", aA.rep, aB.rep)
+    + tfLigneComp("Taux de réponse (réponses / envoyés)", aA.tauxRep, aB.tauxRep, true)
+    + tfLigneComp("Taux de non-renseignement", aA.tauxNonRens, aB.tauxNonRens, true)
+    + tfLigneComp("Suppressions (contenu + compte)", aA.supp, aB.supp)
+    + tfLigneComp("Taux de suppression (/ renseignées)", aA.tauxSupp, aB.tauxSupp, true)
+    + tfLigneComp("Non violation des CGU", aA.fam.non_violation, aB.fam.non_violation)
+    + tfLigneComp("Délai moyen de réponse (jours)", aA.del.mean, aB.del.mean)
+    + tfLigneComp("Délai médian (jours)", aA.del.median, aB.del.median)
+    + tfLigneComp("Âge moyen des victimes", aA.ages.mean, aB.ages.mean)
+    + "</tbody></table></div>"
+    + noteBox("« n.c. » : évolution non calculable (valeur de départ nulle ou donnée absente). Écarts de taux exprimés en points.") + "</div>";
+  /* graphique mensuel des deux trimestres */
+  const moisAB = [];
+  sel.noPer.forEach(r => { const v = tfYm(r); if (v && (tfTrimDe(v) === TF_COMP.a || tfTrimDe(v) === TF_COMP.b) && moisAB.indexOf(v) < 0) moisAB.push(v); });
+  moisAB.sort();
+  h += '<div class="bloc"><h3 class="bloc-titre">Signalements par mois — ' + esc(TF_COMP.a) + " et " + esc(TF_COMP.b) + '</h3><div class="graph">'
+    + svgBars(moisAB.map(m => ({ label: tfLibMois(m).replace(" 20", " "), v: sel.noPer.filter(r => tfYm(r) === m).length })), BLEU) + "</div></div>";
+  /* comparatifs par plateforme / thématique / famille de décision */
+  function tableComp(titre, groupesA, groupesB, note) {
+    const map = {};
+    groupesA.forEach(d => { map[d.label] = { a: d.agg.env, b: 0 }; });
+    groupesB.forEach(d => { (map[d.label] = map[d.label] || { a: 0, b: 0 }).b = d.agg.env; });
+    const keys = Object.keys(map).sort((x, y) => (map[y].a + map[y].b) - (map[x].a + map[x].b)).slice(0, 12);
+    let t = '<div class="bloc"><h3 class="bloc-titre">' + esc(titre) + '</h3><div class="table-enveloppe"><table><thead><tr>'
+      + "<th></th><th>" + esc(TF_COMP.a) + "</th><th>" + esc(TF_COMP.b) + "</th><th>Écart</th><th>Écart %</th></tr></thead><tbody>";
+    keys.forEach(k => { t += tfLigneComp(k, map[k].a, map[k].b); });
+    t += "</tbody></table></div>" + (note ? noteBox(esc(note)) : "") + "</div>";
+    return t;
+  }
+  h += tableComp("Plateformes (12 premières)", tfGroupPlat(rA), tfGroupPlat(rB));
+  h += tableComp("Thématiques (12 premières)", tfGroupTheme(rA), tfGroupTheme(rB), "Thématiques non exclusives.");
+  const famG = recs => TF_FAM_ORDRE.map(f => ({ label: TF_FAM_LABELS[f], agg: { env: tfAgg(recs).fam[f] } })).filter(d => d.agg.env > 0);
+  h += tableComp("Décisions (par famille)", famG(rA), famG(rB));
+  /* profils */
+  const gA = {}, gB = {};
+  rA.forEach(r => gA[r.g] = (gA[r.g] || 0) + 1); rB.forEach(r => gB[r.g] = (gB[r.g] || 0) + 1);
+  let t = '<div class="bloc"><h3 class="bloc-titre">Genre des victimes</h3><div class="table-enveloppe"><table><thead><tr><th></th><th>' + esc(TF_COMP.a) + "</th><th>" + esc(TF_COMP.b) + "</th><th>Écart</th><th>Écart %</th></tr></thead><tbody>";
+  DATA.tf2026.genres.forEach((g, i) => { if ((gA[i] || 0) + (gB[i] || 0) > 0) t += tfLigneComp(g, gA[i] || 0, gB[i] || 0); });
+  h += t + "</tbody></table></div></div>";
+  zone.innerHTML = h;
+  const wireC = (id, key) => {
+    const el = document.getElementById(id);
+    if (el && !el.dataset.tfWired) { el.dataset.tfWired = "1"; el.addEventListener("change", () => { TF_COMP[key] = el.value; tfCompFill(sel); }); }
+  };
+  wireC("cp-a", "a"); wireC("cp-b", "b");
+}
+
+/* ---------- MÉTHODOLOGIE DE L'ONGLET ---------- */
+function tfVueMethodo() {
+  const M = DATA.tf2026._meta || {};
+  let h = '<div class="bloc"><h3 class="bloc-titre">Méthodologie — signalements Trusted Flagger</h3><div class="kv">';
+  const kv = (k, v) => v ? '<div class="k">' + esc(k) + '</div><div class="v" style="text-align:left;font-weight:500">' + esc(v) + "</div>" : "";
+  h += kv("Sources", (M.sources || []).join(" ; "));
+  h += kv("Extraction", M.extrait_le);
+  h += kv("Période couverte", M.perimetre);
+  h += kv("Unité de comptage", M.unite_de_comptage);
+  h += kv("Rattachement temporel", M.rattachement_temporel);
+  h += kv("Calcul des délais", M.regle_delai);
+  h += kv("Réponses absentes", M.regle_reponse);
+  h += kv("Multi-thématiques", M.regle_multithematique);
+  h += "</div></div>";
+  if (M.controles) {
+    const c = M.controles;
+    h += '<div class="bloc"><h3 class="bloc-titre">Contrôles réalisés à l\'extraction</h3><div class="kv">'
+      + kv("Lignes du fichier T1", show(c.lignes_sources && c.lignes_sources.T1_fichier))
+      + kv("Lignes du fichier T2", show(c.lignes_sources && c.lignes_sources.T2_fichier))
+      + kv("Total lignes exploitables", show(c.lignes_sources && c.lignes_sources.total))
+      + kv("Enregistrements générés", show(c.records_generes))
+      + kv("T1 2026 (date d'envoi)", show(c.par_trimestre_date_envoi_2026 && c.par_trimestre_date_envoi_2026.T1))
+      + kv("T2 2026 (date d'envoi)", show(c.par_trimestre_date_envoi_2026 && c.par_trimestre_date_envoi_2026.T2))
+      + kv("Juillet 2026 (résiduel)", show(c.par_trimestre_date_envoi_2026 && c.par_trimestre_date_envoi_2026.T3_partiel))
+      + kv("Envois hors 2026", show(c.envois_hors_2026))
+      + kv("Sans date d'envoi", show(c.sans_date_envoi))
+      + kv("Délais calculables", show(c.delais_calculables))
+      + kv("Délais incohérents écartés", show(c.delais_incoherents_exclus))
+      + "</div></div>";
+  }
+  if (M.normalisations && M.normalisations.length) {
+    h += '<div class="bloc"><h3 class="bloc-titre">Normalisations appliquées (libellés manifestement équivalents)</h3><div class="table-enveloppe"><table><thead><tr><th>Champ</th><th>Libellé source</th><th>Libellé retenu</th><th>Occurrences</th></tr></thead><tbody>';
+    M.normalisations.forEach(n => {
+      h += '<tr><td style="text-align:left">' + esc(n.champ) + '</td><td style="text-align:left">' + esc(n.libelle_source) + '</td><td style="text-align:left">' + esc(n.libelle_retenu) + "</td>" + td(n.occurrences) + "</tr>";
+    });
+    h += "</tbody></table></div>" + noteBox("Les données sources ne sont jamais modifiées : ces correspondances sont appliquées à l'affichage et documentées ici. Les équivalences incertaines n'ont pas été fusionnées.") + "</div>";
+  }
+  h += noteBox("<strong>Dénominateurs des principaux taux.</strong> Taux de réponse et de non-renseignement : signalements envoyés. Taux de suppression, de non-violation, d'avertissement, d'URL introuvable et de demande d'informations : décisions renseignées. Taux de délai calculable : signalements envoyés.");
+  h += noteBox("<strong>Confidentialité.</strong> " + esc(M.confidentialite || "Aucune donnée personnelle dans les fichiers de la webapp."), "vigilance");
+  return h;
+}
+
+/* ---------- remplissage ---------- */
+function tfFill() {
+  const zone = document.getElementById("tf-zone");
+  if (!zone || !DATA.tf2026) return;
+  const full = tfFilter(TF_F, {});
+  const sel = {
+    noPer: tfFilter(TF_F, { periode: false }),
+    noPlat: tfFilter(TF_F, { plat: false }),
+    noTheme: tfFilter(TF_F, { theme: false })
+  };
+  let h = "";
+  if (TF_F.vue === "global") h = tfVueGlobale(full, sel);
+  else if (TF_F.vue === "plateformes") h = tfVuePlateformes(full, sel);
+  else if (TF_F.vue === "thematiques") h = tfVueThematiques(full, sel);
+  else if (TF_F.vue === "delais") h = tfVueDelais(full, sel);
+  else if (TF_F.vue === "victimes") h = tfVueVictimes(full, sel);
+  else if (TF_F.vue === "decisions") h = tfVueDecisions(full, sel);
+  else if (TF_F.vue === "croisements") h = tfVueCroisements(full);
+  else if (TF_F.vue === "comparaison") h = tfVueComparaison(sel);
+  else if (TF_F.vue === "methodo") h = tfVueMethodo();
+  zone.innerHTML = h;
+  if (TF_F.vue === "croisements") {
+    tfCrossFill(full);
+    const wire = (id, key) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener("change", () => { TF_F[key] = el.value; tfCrossFill(tfFilter(TF_F, {})); });
+    };
+    wire("cr-l", "crL"); wire("cr-c", "crC"); wire("cr-mode", "crMode");
+    const ex = document.getElementById("cr-export");
+    if (ex) ex.addEventListener("click", () => tfCrossExport(tfFilter(TF_F, {})));
+  }
+  if (TF_F.vue === "comparaison") tfCompFill(sel);
+}
+function tfInit() {
+  const nav = document.getElementById("tf-vues");
+  if (nav && !nav.dataset.tfWired) {
+    nav.dataset.tfWired = "1";
+    nav.querySelectorAll(".seg").forEach(btn => btn.addEventListener("click", () => {
+      TF_F.vue = btn.dataset.vue;
+      nav.querySelectorAll(".seg").forEach(b => b.classList.toggle("actif", b === btn));
+      tfFill();
+    }));
+  }
+  const filtres = document.getElementById("tf-filtres");
+  if (filtres && !filtres.dataset.tfWired) {
+    filtres.dataset.tfWired = "1";
+    tfConstruireFiltres();
+  }
+  tfFill();
 }
 
 /* ---------------- SORTIES D'ANONYMAT ---------------- */
@@ -905,12 +1545,7 @@ function brancherInteractions(id) {
     });
   }
   if (id === "signalements") {
-    tfFill();
-    const wire = (selId, key) => {
-      const el = document.getElementById(selId);
-      if (el) el.addEventListener("change", () => { TF_F[key] = el.value; tfFill(); });
-    };
-    wire("tf-periode", "periode"); wire("tf-plat", "plat"); wire("tf-theme", "theme");
+    tfInit();
   }
   if (id === "sollicitations") {
     solFill();
@@ -2509,30 +3144,99 @@ function feuilleTchat(I, mois) {
 }
 
 function feuilleTrustedFlagger() {
-  var tf = DATA.flagger || {};
-  var rows = [["Signalements Trusted Flagger — 2026"], [],
-    ["Total 2026", NUM(tf.total_2026)], ["Cumul janv.–mai 2026", NUM(tf.cumul_janvier_mai_2026)], []];
-  rows.push(["Par mois", "Signalements", "Statut"]);
-  (tf.par_mois_2026 || []).forEach(function (o) { rows.push([expLabelMois(o.mois), NUM(o.signalements), o.statut]); });
-  rows.push([]);
-  rows.push(["Par plateforme", "Signalements"]);
-  (tf.par_plateforme || []).forEach(function (o) { rows.push([o.plateforme, NUM(o.signalements)]); });
-  rows.push([]);
-  rows.push(["Par type de contenu", "Signalements"]);
-  (tf.par_type_contenu || []).forEach(function (o) { rows.push([o.type, NUM(o.signalements)]); });
-  rows.push([]);
-  rows.push(["Par décision plateforme", "Signalements"]);
-  (tf.par_decision || []).forEach(function (o) { rows.push([o.decision, NUM(o.signalements)]); });
-  var ii = tf.indicateurs_issue;
-  if (ii) {
-    rows.push([]);
-    rows.push(["Indicateurs d'issue (indicatif)", ""]);
-    rows.push(["Suppressions (indicatif)", NUM(ii.suppressions_indicatif)]);
-    rows.push(["Refus / non violation (indicatif)", NUM(ii.refus_non_violation_indicatif)]);
-    rows.push(["Issue connue (indicatif)", NUM(ii.signalements_issue_connue_indicatif)]);
-    rows.push(["Taux de retrait (indicatif)", PCT(ii.taux_retrait_indicatif_pct)]);
-    rows.push(["Note", ii.note || ""]);
+  var TF = DATA.tf2026;
+  if (!TF || !TF.records) {
+    var tf = DATA.flagger || {};
+    return expFeuille([["Signalements Trusted Flagger — 2026"], [], ["Total 2026", NUM(tf.total_2026)]]);
   }
+  var recs = TF.records;
+  function aggDe(list) { return tfAgg(list); }
+  var a = aggDe(recs);
+  var rT1 = recs.filter(function (r) { return tfTrimDe(r.e) === "T1 2026"; });
+  var rT2 = recs.filter(function (r) { return tfTrimDe(r.e) === "T2 2026"; });
+  var aT1 = aggDe(rT1), aT2 = aggDe(rT2);
+  var rows = [["Signalements Trusted Flagger — fichiers T1 et T2 2026"],
+    ["Unité : 1 ligne source = 1 signalement envoyé à une plateforme. Rattachement par date d'envoi."], []];
+
+  rows.push(["Indicateurs globaux (ensemble des données)", ""]);
+  rows.push(["Signalements envoyés (total fichiers)", NUM(a.env)]);
+  rows.push(["dont T1 2026 (janv.–mars, date d'envoi)", NUM(aT1.env)]);
+  rows.push(["dont T2 2026 (avr.–juin, date d'envoi)", NUM(aT2.env)]);
+  rows.push(["dont juillet 2026 (résiduel)", NUM(recs.filter(function (r) { return tfTrimDe(r.e) === "T3 2026"; }).length)]);
+  rows.push(["dont envois hors 2026", NUM(recs.filter(function (r) { return r.e && r.e.slice(0, 4) !== "2026"; }).length)]);
+  rows.push(["dont sans date d'envoi", NUM(recs.filter(function (r) { return !r.e; }).length)]);
+  rows.push(["Réponses reçues (décision renseignée hors « pas de réponse »)", NUM(a.rep)]);
+  rows.push(["Taux de réponse (réponses / envoyés)", PCT(a.tauxRep)]);
+  rows.push(["Non renseigné (cellule décision vide)", NUM(a.nonRens)]);
+  rows.push(["Pas de réponse (constat explicite)", NUM(a.sansRep)]);
+  rows.push(["Suppressions (contenu + compte)", NUM(a.supp)]);
+  rows.push(["Taux de suppression (/ décisions renseignées)", PCT(a.tauxSupp)]);
+  rows.push(["Non violation des CGU", NUM(a.fam.non_violation)]);
+  rows.push(["Taux de non-violation (/ décisions renseignées)", PCT(a.tauxNonViol)]);
+  rows.push(["Signalements relancés", NUM(a.rel)]);
+  rows.push(["Délais calculables (envoi et 1re réponse datés)", NUM(a.del.n)]);
+  rows.push(["Délai moyen (jours)", NUM(a.del.mean)]);
+  rows.push(["Délai médian (jours)", NUM(a.del.median)]);
+  rows.push(["Délai min / max (jours)", (a.del.n ? a.del.min + " / " + a.del.max : "n.d.")]);
+  rows.push(["Délais incohérents écartés (réponse antérieure à l'envoi)", NUM(a.del.inc)]);
+  rows.push([]);
+
+  rows.push(["Par mois (date d'envoi)", "Signalements", "Réponses", "Taux de réponse", "Suppressions", "Délai moyen (j)"]);
+  var moisSet = {};
+  recs.forEach(function (r) { if (r.e) moisSet[r.e] = true; });
+  Object.keys(moisSet).sort().forEach(function (m) {
+    var g = aggDe(recs.filter(function (r) { return r.e === m; }));
+    rows.push([expLabelMois(m), NUM(g.env), NUM(g.rep), PCT(g.tauxRep), NUM(g.supp), NUM(g.del.mean)]);
+  });
+  var sans = recs.filter(function (r) { return !r.e; });
+  if (sans.length) rows.push(["Sans date d'envoi", NUM(sans.length), NUM(aggDe(sans).rep), PCT(aggDe(sans).tauxRep), NUM(aggDe(sans).supp), NUM(aggDe(sans).del.mean)]);
+  rows.push([]);
+
+  rows.push(["Par plateforme", "Envoyés", "Réponses", "Taux réponse", "Non renseigné", "Taux non-rens.", "Suppressions", "Taux suppr. (/rens.)", "Non-violation", "Délai moyen (j)", "Délai médian (j)"]);
+  tfGroupPlat(recs).forEach(function (d) {
+    var g = d.agg;
+    rows.push([d.label, NUM(g.env), NUM(g.rep), PCT(g.tauxRep), NUM(g.nonRens), PCT(g.tauxNonRens), NUM(g.supp), PCT(g.tauxSupp), NUM(g.fam.non_violation), NUM(g.del.mean), NUM(g.del.median)]);
+  });
+  rows.push([]);
+
+  rows.push(["Par thématique (non exclusives : un signalement multi-thématiques figure dans plusieurs lignes)", "Signalements", "Taux réponse", "Taux suppr. (/rens.)", "Délai moyen (j)", "Âge moyen"]);
+  tfGroupTheme(recs).forEach(function (d) {
+    var g = d.agg;
+    rows.push([d.label, NUM(g.env), PCT(g.tauxRep), PCT(g.tauxSupp), NUM(g.del.mean), NUM(g.ages.mean)]);
+  });
+  rows.push([]);
+
+  rows.push(["Décisions (libellés du fichier source)", "Famille", "Nombre", "Part / envoyés", "Part / renseignées"]);
+  var byD = {};
+  recs.forEach(function (r) { byD[r.d] = (byD[r.d] || 0) + 1; });
+  Object.keys(byD).sort(function (x, y) { return byD[y] - byD[x]; }).forEach(function (k) {
+    var d = TF.decisions[k];
+    rows.push([d.label, TF_FAM_LABELS[d.famille], NUM(byD[k]), PCT(pctSafe(byD[k], a.env)),
+      d.famille === "non_renseigne" ? "—" : PCT(pctSafe(byD[k], a.rens))]);
+  });
+  rows.push([]);
+
+  rows.push(["Distribution des délais", "Nombre"]);
+  tfDistribDelais(a.del).forEach(function (d) { rows.push([d.label, NUM(d.v)]); });
+  rows.push([]);
+
+  rows.push(["Profil des victimes", "Nombre", "Part"]);
+  var byG = {};
+  recs.forEach(function (r) { byG[r.g] = (byG[r.g] || 0) + 1; });
+  TF.genres.forEach(function (g, i) { if (byG[i]) rows.push(["Genre — " + g, NUM(byG[i]), PCT(pctSafe(byG[i], a.env))]); });
+  var byTr = [0, 0, 0, 0, 0, 0];
+  recs.forEach(function (r) { byTr[tfTranche(r.a)]++; });
+  TF_TRANCHES.forEach(function (t, i) { if (byTr[i]) rows.push(["Tranche — " + t, NUM(byTr[i]), PCT(pctSafe(byTr[i], a.env))]); });
+  rows.push(["Âge moyen (sur âges renseignés)", NUM(a.ages.mean), ""]);
+  rows.push(["Âge médian", NUM(a.ages.median), ""]);
+  rows.push([]);
+
+  rows.push(["Comparaison T1 vs T2 2026 (date d'envoi)", "T1 2026", "T2 2026"]);
+  rows.push(["Signalements envoyés", NUM(aT1.env), NUM(aT2.env)]);
+  rows.push(["Taux de réponse", PCT(aT1.tauxRep), PCT(aT2.tauxRep)]);
+  rows.push(["Taux de suppression (/ renseignées)", PCT(aT1.tauxSupp), PCT(aT2.tauxSupp)]);
+  rows.push(["Délai moyen (jours)", NUM(aT1.del.mean), NUM(aT2.del.mean)]);
+  rows.push(["Âge moyen", NUM(aT1.ages.mean), NUM(aT2.ages.mean)]);
   return expFeuille(rows);
 }
 
