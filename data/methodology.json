@@ -1,224 +1,235 @@
 {
-  "_meta": {
-    "titre": "Méthodologie et limites — reporting 3018",
-    "date_generation": "2026-06-12",
-    "principe": "Aucune extrapolation. Données manquantes = null ou n.d. Aucune donnée personnelle dans les JSON.",
-    "date_mise_a_jour_donnees": "2026-06-12",
-    "periode_couverte": "2024 et 2025 (12 mois) ; 2026 janvier-mai (mai partiel sur l'activité traitée tous canaux ; juin partiel sur signalements et sorties)"
+ "_meta": {
+  "titre": "Méthodologie et limites — reporting 3018",
+  "date_generation": "2026-06-12",
+  "principe": "Aucune extrapolation. Données manquantes = null ou n.d. Aucune donnée personnelle dans les JSON.",
+  "date_mise_a_jour_donnees": "2026-06-12",
+  "periode_couverte": "2024 et 2025 (12 mois) ; 2026 janvier-mai (mai partiel sur l'activité traitée tous canaux ; juin partiel sur signalements et sorties)"
+ },
+ "fichiers_utilises": [
+  {
+   "fichier": "3018 - Tableau d'activité mensuelle.xlsx",
+   "usage": "Référence consolidée + comparaisons historiques",
+   "periode": "2024, 2025 (janv-mai) ; 2026 : janvier seul",
+   "limite": "Pour 2026, seul janvier est rempli ; fév-mai vides."
   },
-  "fichiers_utilises": [
-    {
-      "fichier": "3018 - Tableau d'activité mensuelle.xlsx",
-      "usage": "Référence consolidée + comparaisons historiques",
-      "periode": "2024, 2025 (janv-mai) ; 2026 : janvier seul",
-      "limite": "Pour 2026, seul janvier est rempli ; fév-mai vides."
-    },
-    {
-      "fichier": "detailed_queue_statistics.csv / queue_performance.csv / call_distribution.csv",
-      "usage": "Téléphone (3CX)",
-      "periode": "01/01 au 30/05/2026",
-      "limite": "Agrégé sur la période ; pas de décrochés par mois. Deux bases d'appels reçus divergentes."
-    },
-    {
-      "fichier": "Stats_Tchats_fev-mai_2026.xlsx",
-      "usage": "Tchat",
-      "periode": "01/02 au 31/05/2026",
-      "limite": "Janvier absent. Web/app non distingués. Écoutants non nominatifs."
-    },
-    {
-      "fichier": "Signalements RS - 2026.xlsx",
-      "usage": "Signalements Trusted Flagger",
-      "periode": "signalements 2026 (juin partiel)",
-      "limite": "8 lignes 2025 + 42 sans date dans les répartitions ; libellés de décision non normalisés."
-    },
-    {
-      "fichier": "2026 - Sorties d'anonymat.xlsx",
-      "usage": "Remontées institutionnelles",
-      "periode": "janv-juin 2026 (juin partiel)",
-      "limite": "4 lignes mal datées (2029), 36 lignes sans date exclues du mensuel."
-    },
-    {
-      "fichier": "Helpline_Assessment_Platform_Q1_2026.xlsx",
-      "usage": "BIK / Insafe (séparé)",
-      "periode": "Q1 2026",
-      "limite": "Déclaratif ; catégories non exclusives ; ne pas mélanger au global interne."
-    },
-    {
-      "fichier": "Stats_SF_par_ecoutant_fev-mai_2026.xlsx (export Salesforce, objet Case)",
-      "usage": "Activité traitée tous canaux (appels + tchats + mails) — niveau dossier",
-      "periode": "01/02 au 26/05/2026 (mai partiel)",
-      "limite": "Données nominatives par écoutant NON exploitées (suivi individuel exclu). Seuls les totaux mensuels par canal sont utilisés. Mesure niveau dossier, distincte de 3CX (téléphonie) et de l'export tchat Conversation Entries."
-    },
-    {
-      "fichier": "etp.json (source : Octime — Temps de base)",
-      "usage": "Mise en perspective des volumes par les ETP théoriques (Synthèse, Comparaison historique, Sollicitations, Sorties d'anonymat)",
-      "periode": "janvier 2025 à juin 2026 (juin partiel) ; pas de 2024",
-      "limite": "ETP théorique (temps dû initial), pas la présence réelle ; ne mesure aucune performance individuelle."
-    }
-  ],
-  "regles_de_calcul": {
-    "taux_reponse_telephone": "appels décrochés / appels reçus × 100 (base files 3CX)",
-    "taux_prise_tchat": "tchats traités / tchats reçus × 100",
-    "volume_activite_traite": "appels décrochés + tchats traités + emails traités (emails exclus ici, faute de source exploitable)",
-    "arrondi": "pourcentages à 1 décimale",
-    "non_calcul": "aucun taux calculé si dénominateur absent, nul ou périmètre incertain",
-    "taux_reponse_global": "contacts traités / sollicitations × 100",
-    "evolution_annuelle": "(année N − année N-1) / année N-1 × 100, même mois",
-    "cumul_annuel": "somme des mois disponibles uniquement",
-    "activite_traitee_tous_canaux": "appels décrochés (3CX) + tchats traités (export tchat) + mails (export SF Case) ; pour février-mai 2026. Janvier 2026 via le tableau d'activité mensuelle.",
-    "sollicitations_recues": "appels reçus (total 3CX) + tchats reçus + mails reçus (+ autres canaux si disponibles)",
-    "distinction_recues_traitees": "sollicitations reçues = activité entrante ; contacts traités = activité prise en charge (appels décrochés + tchats traités + mails)",
-    "contacts_traites": "appels décrochés + tchats traités + mails traités",
-    "etp_mensuel": "temps dû initial du mois / (jours couverts × 5 h) — ETP théorique Octime ; ETP moyen = moyenne des ETP mensuels de la période"
+  {
+   "fichier": "detailed_queue_statistics.csv / queue_performance.csv / call_distribution.csv",
+   "usage": "Téléphone (3CX)",
+   "periode": "01/01 au 30/05/2026",
+   "limite": "Agrégé sur la période ; pas de décrochés par mois. Deux bases d'appels reçus divergentes."
   },
-  "donnees_manquantes": [
-    "Tchat janvier 2026 : absent de l'export.",
-    "Mai 2026 : mails partiels (export SF Case au 26/05) ; appels et tchats complets.",
-    "Détail CRIP seul et procureur seul avant 2026 : non disponible (rubrique CRIP regroupée dans le tableau).",
-    "Signal-Sports 2026 : non disponible dans les fichiers fournis.",
-    "OFMIN 2024 : absent du tableau."
-  ],
-  "ecarts_entre_sources": [
-    {
-      "sujet": "Activité traitée : reconstruction vs mesure SF Case",
-      "ecart": "Reconstruction (décrochés 3CX + tchats traités + mails) = 14649 sur fév-mai ; mesure niveau dossier SF Case = 13 101. Bases de comptage différentes.",
-      "source_retenue": "Reconstruction par canal (définition du prompt maître : appels décrochés + tchats traités + emails)."
-    },
-    {
-      "sujet": "Indicateurs de protection 2024-2025 vs 2026",
-      "ecart": "2024-2025 issus du tableau d'activité ; 2026 des fichiers dédiés. Niveaux non strictement continus.",
-      "source_retenue": "Affichage des deux avec note de prudence."
-    },
-    {
-      "sujet": "Signalements TF Q1",
-      "ecart": "Interne (janv-mars) = 1 846 vs BIK déclaré Q1 = 1 858.",
-      "source_retenue": "Interne pour le pilotage ; BIK séparé."
-    }
-  ],
-  "ruptures_methodologiques": [
-    "Migration CRM au 01/02/2026 : nouvel outil, codage multi-catégories (BIK), démarrage de l'export tchat actuel. Affecte la comparabilité avant/après février 2026.",
-    "Trois mesures coexistent pour l'activité : 3CX (téléphonie), Conversation Entries (tchat), Salesforce Case (prises en charge tous canaux). Elles ne sont pas interchangeables et sont utilisées chacune dans le bon périmètre."
-  ],
-  "comparaisons_temporelles": {
-    "disponibles": [
-      "2024 vs 2025 : 12 mois (sollicitations reçues, contacts traités, taux, indicateurs de protection)",
-      "Sollicitations reçues et contacts traités 2026 vs 2025 : janvier (consolidé) et février-mai (reconstruit) — comparables avec prudence (provenance différente)",
-      "Protection 2026 vs 2024-2025 : signalements plateformes, MEN, PHAROS, OFMIN, Signal-Sports (2024-2025), CRIP/IP/SP regroupés"
-    ],
-    "non_disponibles": [
-      "Détail CRIP / procureur séparés avant 2026 (rubrique CRIP regroupée)",
-      "Signal-Sports 2026 (aucune transmission sport identifiée dans les fichiers fournis)",
-      "Historique pré-2024"
-    ],
-    "note": "Comparaison historique partielle, à interpréter avec prudence."
+  {
+   "fichier": "Stats_Tchats_fev-mai_2026.xlsx",
+   "usage": "Tchat",
+   "periode": "01/02 au 31/05/2026",
+   "limite": "Janvier absent. Web/app non distingués. Écoutants non nominatifs."
   },
-  "confidentialite": "Les fichiers sources contiennent des données personnelles (noms, emails, téléphones, références de dossiers, noms de mineurs, URLs). Aucune n'a été reportée : seuls des comptages agrégés et anonymes figurent dans les JSON.",
-  "perimetre_partiel_juin": "Données arrêtées au 12/06/2026 : juin 2026 est partiel et signalé comme tel (signalements et sorties d'anonymat).",
-  "telephone_mensuel": "Mise à jour : exports 3CX mensuels intégrés. Appels reçus/décrochés/abandonnés, taux de réponse et durées disponibles par mois (janv-mai 2026).",
-  "controles_coherence": [
-    {
-      "controle": "Activité traitée fév-mai = somme des canaux (décrochés+tchats+mails)",
-      "attendu": 14649,
-      "calcule": 14649,
-      "resultat": "cohérent"
-    },
-    {
-      "controle": "Activité traitée fév-mai = somme des mois",
-      "attendu": 14649,
-      "calcule": 14649,
-      "resultat": "cohérent"
-    },
-    {
-      "controle": "Signalements TF : total 2026 = somme des mois",
-      "attendu": 4153,
-      "calcule": 4153,
-      "resultat": "cohérent"
-    },
-    {
-      "controle": "Sorties d'anonymat : cumul janv-mai = somme des destinataires",
-      "attendu": 1244,
-      "calcule": 1244,
-      "resultat": "cohérent"
-    }
-  ],
-  "pourquoi_nd": "« n.d. » seulement quand aucune source ne permet de reconstruire l'indicateur. Les sollicitations reçues février-mai 2026 sont reconstruites (appels reçus + tchats reçus + mails) et donc affichées. Restent « n.d. » : tchat janvier, détail CRIP/procureur avant 2026, OFMIN 2024, Signal-Sports 2026.",
-  "fichiers_json": [
-    "activity_monthly.json",
-    "activity_quarterly.json",
-    "annual_to_date.json",
-    "historical_monthly.json",
-    "phone.json",
-    "chat.json",
-    "trusted_flagger.json",
-    "anonymity_outputs.json",
-    "bik.json",
-    "methodology.json",
-    "trusted_flagger_2026.json",
-    "etp.json"
-  ],
-  "lignage_donnees": {
-    "2024_2025": "tableau d'activité mensuelle consolidé (activité globale, activité traitée et indicateurs de protection)",
-    "janvier_2026": "tableau d'activité mensuelle (source consolidée disponible)",
-    "fevrier_mai_2026_activite_traitee": "reconstruit à partir des exports 3CX mensuels (appels décrochés) + fichier tchat (tchats traités) + export SF Case (mails)",
-    "emails": "intégrés (915 sur février-mai, export SF Case) ; si aucune source email exploitable, le volume serait calculé hors emails avec la mention correspondante",
-    "protection_2026": "fichiers dédiés (Signalements RS, Sorties d'anonymat)"
+  {
+   "fichier": "2026_T1_-_SIGNALEMENTS_PLATEFORMES.xlsx / 2026_T2_-_SIGNALEMENTS_PLATEFORMES.xlsx",
+   "usage": "Signalements Trusted Flagger (onglet dédié et feuille d'export) — 1 ligne = 1 signalement envoyé, rattachement par date d'envoi",
+   "periode": "signalements envoyés de janvier à juin 2026 (+ 47 envois début juillet, 8 envois datés février 2025, 50 sans date d'envoi)",
+   "limite": "Libellés de décision en saisie libre (harmonisations manifestes documentées dans l'onglet) ; 5 délais incohérents écartés ; thématiques non exclusives."
   },
-  "indicateurs_protection": {
-    "indicateurs_disponibles_historique": "signalements plateformes (Trusted Flagger), MEN / harcèlement scolaire, PHAROS, CRIP, OFMIN (depuis 2025)",
-    "indicateurs_2026_uniquement": "signalements au procureur (absent du tableau d'activité 2024-2025)",
-    "sources": "2024-2025 : tableau d'activité mensuelle (section « Signalements envoyés ») ; 2026 : fichiers dédiés",
-    "limite": "changement de source entre 2024-2025 et 2026 : les niveaux ne sont pas strictement continus ; comparer les tendances avec prudence.",
-    "crip_ip_sp": "La rubrique « CRIP » du tableau d'activité 2024-2025 regroupait informations préoccupantes et signalements au procureur. Indicateur regroupé « CRIP / IP / SP » créé pour la comparaison (2024-2025 = colonne CRIP ; 2026 = cas IPS distincts CRIP et/ou procureur). Détail CRIP / procureur conservé pour 2026."
+  {
+   "fichier": "Signalements RS - 2026.xlsx (version antérieure, arrêtée au 12/06/2026)",
+   "usage": "Conservée pour la synthèse, la comparaison historique, l'activité mensuelle et les feuilles consolidées (trusted_flagger.json)",
+   "periode": "signalements 2026, juin partiel (arrêt 12/06)",
+   "limite": "Périmètre antérieur aux fichiers T1/T2 : écarts documentés ci-dessous. Un rafraîchissement global des données réalignera l'ensemble."
   },
-  "lexique": {
-    "sollicitations_recues": "tous les contacts reçus = appels reçus (entrants) + tchats reçus + mails reçus + autres canaux éventuels",
-    "contacts_traites": "contacts effectivement pris en charge = appels décrochés + tchats traités + mails traités",
-    "appels_recus": "appels entrants sur toutes les files retenues (= « total des appels » dans les exports 3CX)",
-    "appels_pris": "appels répondus / décrochés (= « appels répondus » dans les exports 3CX)",
-    "appels_non_repondus": "appels abandonnés",
-    "signalements_plateformes": "tous les signalements du fichier « Signalements RS », considérés comme Trusted Flagger sauf indication contraire explicite",
-    "signal_sports": "ministère des Sports",
-    "crip_2024_2025": "rubrique regroupant informations préoccupantes (IP) et signalements au procureur",
-    "ip_crip_2026": "informations préoccupantes transmises à la CRIP",
-    "article_40_sp_2026": "signalements au procureur (une même situation peut comporter IP et SP)"
+  {
+   "fichier": "2026 - Sorties d'anonymat.xlsx",
+   "usage": "Remontées institutionnelles",
+   "periode": "janv-juin 2026 (juin partiel)",
+   "limite": "4 lignes mal datées (2029), 36 lignes sans date exclues du mensuel."
   },
-  "note_provenance": {
-    "2024_2025": "données consolidées du tableau d'activité mensuelle",
-    "2026": "données reconstruites à partir des fichiers sources détaillés (exports 3CX mensuels, fichier tchat, export SF Case pour les mails, fichiers Signalements RS et Sorties d'anonymat)",
-    "sollicitations_vs_traites": "sollicitations reçues = activité entrante ; contacts traités = activité prise en charge. Les deux notions sont distinctes et affichées séparément.",
-    "crip_historique": "les comparaisons CRIP nécessitent de regrouper IP et signalements au procureur (indicateur « CRIP / IP / SP regroupés ») pour conserver un périmètre comparable entre 2024-2025 et 2026.",
-    "prudence": "comparaisons 2026 vs 2024-2025 possibles, à interpréter avec la prudence d'usage liée à la différence de provenance."
+  {
+   "fichier": "Helpline_Assessment_Platform_Q1_2026.xlsx",
+   "usage": "BIK / Insafe (séparé)",
+   "periode": "Q1 2026",
+   "limite": "Déclaratif ; catégories non exclusives ; ne pas mélanger au global interne."
   },
-  "tableau_de_bord_trusted_flagger": {
-    "perimetre": "strictement 2026 (date du signalement 3018)",
-    "source": "Signalements RS - 2026.xlsx ; données analytiques anonymisées (aucune donnée personnelle) dans trusted_flagger_2026.json",
-    "indicateur_principal": "nombre de signalements envoyés (les relances ne sont jamais additionnées aux signalements)",
-    "relances": "colonnes « Date de relance/appel » et « Relance TikTok » ; un signalement relancé compte une fois (signalements relancés), chaque relance compte dans le total des relances",
-    "categories_reponse": "colonne « Décision de la plateforme », libellés exacts non modifiés ; cellule vide = « Non renseigné » (distinct de « Pas de réponse »)",
-    "thematiques": "colonne « Thématiques », multi-valeurs (parsing CSV, libellés exacts), non exclusives",
-    "types_de_reponse": "action et refus = réponse de la plateforme ; sans_reponse = « Pas de réponse »/« Aucune réponse » ; non_abouti = URL introuvable, manque d'informations, 3018 non habilité, accusé de réception, etc. (non comptés comme réponse) ; mapping catégorie→type exposé dans trusted_flagger_2026.json",
-    "taux": {
-      "taux_non_renseignement": "non renseignés / total signalements envoyés",
-      "taux_reponse": "réponses (action + refus) / signalements renseignés",
-      "taux_refus": "refus / réponses",
-      "taux_relance": "signalements relancés (distincts) / total signalements envoyés"
-    },
-    "delais": "date de réponse (Q) − date d'envoi (K), en jours, uniquement si les deux dates sont valides et le délai ≥ 0 ; le nombre de lignes utilisées est affiché",
-    "division_par_zero": "un taux non calculable est affiché « N/A » (jamais une erreur)",
-    "exclus": "pas d'analyse par juriste, pas de classement ni de performance individuelle, pas de CRM, pas de données antérieures à 2026"
+  {
+   "fichier": "Stats_SF_par_ecoutant_fev-mai_2026.xlsx (export Salesforce, objet Case)",
+   "usage": "Activité traitée tous canaux (appels + tchats + mails) — niveau dossier",
+   "periode": "01/02 au 26/05/2026 (mai partiel)",
+   "limite": "Données nominatives par écoutant NON exploitées (suivi individuel exclu). Seuls les totaux mensuels par canal sont utilisés. Mesure niveau dossier, distincte de 3CX (téléphonie) et de l'export tchat Conversation Entries."
   },
-  "etp": {
-    "source": "Octime — édition Temps de base",
-    "champ_retenu": "Temps dû initial",
-    "formule": "1 ETP = 151,67 heures par mois (35 heures par semaine × 52 ÷ 12). Le « 5 » de l'ancienne note correspondait à 5 jours par semaine, et non à 5 heures par jour.",
-    "nature": "ETP théorique issu des cycles",
-    "usage": "Les ETP n'apparaissent que dans « Synthèse » (dernier mois complet) et « ETP et activité » (analyse détaillée). Ils ne constituent ni une mesure de productivité ni un indicateur individuel.",
-    "limites": [
-      "ne mesure pas la présence réelle",
-      "ne mesure pas le temps exclusivement consacré à l'écoute",
-      "ne constitue pas un indicateur individuel de performance"
-    ],
-    "perimetre": "janvier 2025 à juin 2026 ; aucune valeur 2024 (n.d.) ; juin 2026 partiel (non extrapolé)",
-    "ip_procureur": "procureur, CRIP, OFMIN et OCRTEH ne sont pas exclusifs : une même situation peut viser plusieurs autorités ; ne jamais les additionner en un total de situations uniques. « Situations IPS » reste l'indicateur global."
+  {
+   "fichier": "etp.json (source : Octime — Temps de base)",
+   "usage": "Mise en perspective des volumes par les ETP théoriques (Synthèse, Comparaison historique, Sollicitations, Sorties d'anonymat)",
+   "periode": "janvier 2025 à juin 2026 (juin partiel) ; pas de 2024",
+   "limite": "ETP théorique (temps dû initial), pas la présence réelle ; ne mesure aucune performance individuelle."
   }
+ ],
+ "regles_de_calcul": {
+  "taux_reponse_telephone": "appels décrochés / appels reçus × 100 (base files 3CX)",
+  "taux_prise_tchat": "tchats traités / tchats reçus × 100",
+  "volume_activite_traite": "appels décrochés + tchats traités + emails traités (emails exclus ici, faute de source exploitable)",
+  "arrondi": "pourcentages à 1 décimale",
+  "non_calcul": "aucun taux calculé si dénominateur absent, nul ou périmètre incertain",
+  "taux_reponse_global": "contacts traités / sollicitations × 100",
+  "evolution_annuelle": "(année N − année N-1) / année N-1 × 100, même mois",
+  "cumul_annuel": "somme des mois disponibles uniquement",
+  "activite_traitee_tous_canaux": "appels décrochés (3CX) + tchats traités (export tchat) + mails (export SF Case) ; pour février-mai 2026. Janvier 2026 via le tableau d'activité mensuelle.",
+  "sollicitations_recues": "appels reçus (total 3CX) + tchats reçus + mails reçus (+ autres canaux si disponibles)",
+  "distinction_recues_traitees": "sollicitations reçues = activité entrante ; contacts traités = activité prise en charge (appels décrochés + tchats traités + mails)",
+  "contacts_traites": "appels décrochés + tchats traités + mails traités",
+  "etp_mensuel": "temps dû initial du mois / (jours couverts × 5 h) — ETP théorique Octime ; ETP moyen = moyenne des ETP mensuels de la période"
+ },
+ "donnees_manquantes": [
+  "Tchat janvier 2026 : absent de l'export.",
+  "Mai 2026 : mails partiels (export SF Case au 26/05) ; appels et tchats complets.",
+  "Détail CRIP seul et procureur seul avant 2026 : non disponible (rubrique CRIP regroupée dans le tableau).",
+  "Signal-Sports 2026 : non disponible dans les fichiers fournis.",
+  "OFMIN 2024 : absent du tableau."
+ ],
+ "ecarts_entre_sources": [
+  {
+   "sujet": "Activité traitée : reconstruction vs mesure SF Case",
+   "ecart": "Reconstruction (décrochés 3CX + tchats traités + mails) = 14649 sur fév-mai ; mesure niveau dossier SF Case = 13 101. Bases de comptage différentes.",
+   "source_retenue": "Reconstruction par canal (définition du prompt maître : appels décrochés + tchats traités + emails)."
+  },
+  {
+   "sujet": "Indicateurs de protection 2024-2025 vs 2026",
+   "ecart": "2024-2025 issus du tableau d'activité ; 2026 des fichiers dédiés. Niveaux non strictement continus.",
+   "source_retenue": "Affichage des deux avec note de prudence."
+  },
+  {
+   "sujet": "Signalements TF Q1",
+   "ecart": "Interne (janv-mars) = 1 846 vs BIK déclaré Q1 = 1 858.",
+   "source_retenue": "Interne pour le pilotage ; BIK séparé."
+  },
+  {
+   "sujet": "Signalements Trusted Flagger : onglet dédié vs autres sections",
+   "ecart": "L'onglet Trusted Flagger et sa feuille d'export reposent sur les fichiers T1/T2 (arrêtés fin juin : avril 884, mai 1071, juin 1088, total janvier-juin 4 889 par date d'envoi). La synthèse, l'activité mensuelle et les feuilles consolidées reposent encore sur l'ancien fichier arrêté au 12/06 (avril 885, mai 1072, juin 350 partiel, total 4 153). Écarts d'avril et mai : ±1 signalement (différence de périmètre entre versions du fichier source).",
+   "source_retenue": "Fichiers T1/T2 pour l'analyse Trusted Flagger détaillée ; ancien périmètre conservé ailleurs pour ne pas modifier les autres sections (à réaligner lors du prochain rafraîchissement global)."
+  }
+ ],
+ "ruptures_methodologiques": [
+  "Migration CRM au 01/02/2026 : nouvel outil, codage multi-catégories (BIK), démarrage de l'export tchat actuel. Affecte la comparabilité avant/après février 2026.",
+  "Trois mesures coexistent pour l'activité : 3CX (téléphonie), Conversation Entries (tchat), Salesforce Case (prises en charge tous canaux). Elles ne sont pas interchangeables et sont utilisées chacune dans le bon périmètre."
+ ],
+ "comparaisons_temporelles": {
+  "disponibles": [
+   "2024 vs 2025 : 12 mois (sollicitations reçues, contacts traités, taux, indicateurs de protection)",
+   "Sollicitations reçues et contacts traités 2026 vs 2025 : janvier (consolidé) et février-mai (reconstruit) — comparables avec prudence (provenance différente)",
+   "Protection 2026 vs 2024-2025 : signalements plateformes, MEN, PHAROS, OFMIN, Signal-Sports (2024-2025), CRIP/IP/SP regroupés"
+  ],
+  "non_disponibles": [
+   "Détail CRIP / procureur séparés avant 2026 (rubrique CRIP regroupée)",
+   "Signal-Sports 2026 (aucune transmission sport identifiée dans les fichiers fournis)",
+   "Historique pré-2024"
+  ],
+  "note": "Comparaison historique partielle, à interpréter avec prudence."
+ },
+ "confidentialite": "Les fichiers sources contiennent des données personnelles (noms, emails, téléphones, références de dossiers, noms de mineurs, URLs). Aucune n'a été reportée : seuls des comptages agrégés et anonymes figurent dans les JSON.",
+ "perimetre_partiel_juin": "Données arrêtées au 12/06/2026 : juin 2026 est partiel et signalé comme tel (signalements et sorties d'anonymat).",
+ "telephone_mensuel": "Mise à jour : exports 3CX mensuels intégrés. Appels reçus/décrochés/abandonnés, taux de réponse et durées disponibles par mois (janv-mai 2026).",
+ "controles_coherence": [
+  {
+   "controle": "Activité traitée fév-mai = somme des canaux (décrochés+tchats+mails)",
+   "attendu": 14649,
+   "calcule": 14649,
+   "resultat": "cohérent"
+  },
+  {
+   "controle": "Activité traitée fév-mai = somme des mois",
+   "attendu": 14649,
+   "calcule": 14649,
+   "resultat": "cohérent"
+  },
+  {
+   "controle": "Signalements TF : total 2026 = somme des mois",
+   "attendu": 4153,
+   "calcule": 4153,
+   "resultat": "cohérent"
+  },
+  {
+   "controle": "Sorties d'anonymat : cumul janv-mai = somme des destinataires",
+   "attendu": 1244,
+   "calcule": 1244,
+   "resultat": "cohérent"
+  }
+ ],
+ "pourquoi_nd": "« n.d. » seulement quand aucune source ne permet de reconstruire l'indicateur. Les sollicitations reçues février-mai 2026 sont reconstruites (appels reçus + tchats reçus + mails) et donc affichées. Restent « n.d. » : tchat janvier, détail CRIP/procureur avant 2026, OFMIN 2024, Signal-Sports 2026.",
+ "fichiers_json": [
+  "activity_monthly.json",
+  "activity_quarterly.json",
+  "annual_to_date.json",
+  "historical_monthly.json",
+  "phone.json",
+  "chat.json",
+  "trusted_flagger.json",
+  "anonymity_outputs.json",
+  "bik.json",
+  "methodology.json",
+  "trusted_flagger_2026.json",
+  "etp.json"
+ ],
+ "lignage_donnees": {
+  "2024_2025": "tableau d'activité mensuelle consolidé (activité globale, activité traitée et indicateurs de protection)",
+  "janvier_2026": "tableau d'activité mensuelle (source consolidée disponible)",
+  "fevrier_mai_2026_activite_traitee": "reconstruit à partir des exports 3CX mensuels (appels décrochés) + fichier tchat (tchats traités) + export SF Case (mails)",
+  "emails": "intégrés (915 sur février-mai, export SF Case) ; si aucune source email exploitable, le volume serait calculé hors emails avec la mention correspondante",
+  "protection_2026": "fichiers dédiés (Signalements RS, Sorties d'anonymat)"
+ },
+ "indicateurs_protection": {
+  "indicateurs_disponibles_historique": "signalements plateformes (Trusted Flagger), MEN / harcèlement scolaire, PHAROS, CRIP, OFMIN (depuis 2025)",
+  "indicateurs_2026_uniquement": "signalements au procureur (absent du tableau d'activité 2024-2025)",
+  "sources": "2024-2025 : tableau d'activité mensuelle (section « Signalements envoyés ») ; 2026 : fichiers dédiés",
+  "limite": "changement de source entre 2024-2025 et 2026 : les niveaux ne sont pas strictement continus ; comparer les tendances avec prudence.",
+  "crip_ip_sp": "La rubrique « CRIP » du tableau d'activité 2024-2025 regroupait informations préoccupantes et signalements au procureur. Indicateur regroupé « CRIP / IP / SP » créé pour la comparaison (2024-2025 = colonne CRIP ; 2026 = cas IPS distincts CRIP et/ou procureur). Détail CRIP / procureur conservé pour 2026."
+ },
+ "lexique": {
+  "sollicitations_recues": "tous les contacts reçus = appels reçus (entrants) + tchats reçus + mails reçus + autres canaux éventuels",
+  "contacts_traites": "contacts effectivement pris en charge = appels décrochés + tchats traités + mails traités",
+  "appels_recus": "appels entrants sur toutes les files retenues (= « total des appels » dans les exports 3CX)",
+  "appels_pris": "appels répondus / décrochés (= « appels répondus » dans les exports 3CX)",
+  "appels_non_repondus": "appels abandonnés",
+  "signalements_plateformes": "tous les signalements du fichier « Signalements RS », considérés comme Trusted Flagger sauf indication contraire explicite",
+  "signal_sports": "ministère des Sports",
+  "crip_2024_2025": "rubrique regroupant informations préoccupantes (IP) et signalements au procureur",
+  "ip_crip_2026": "informations préoccupantes transmises à la CRIP",
+  "article_40_sp_2026": "signalements au procureur (une même situation peut comporter IP et SP)"
+ },
+ "note_provenance": {
+  "2024_2025": "données consolidées du tableau d'activité mensuelle",
+  "2026": "données reconstruites à partir des fichiers sources détaillés (exports 3CX mensuels, fichier tchat, export SF Case pour les mails, fichiers Signalements RS et Sorties d'anonymat)",
+  "sollicitations_vs_traites": "sollicitations reçues = activité entrante ; contacts traités = activité prise en charge. Les deux notions sont distinctes et affichées séparément.",
+  "crip_historique": "les comparaisons CRIP nécessitent de regrouper IP et signalements au procureur (indicateur « CRIP / IP / SP regroupés ») pour conserver un périmètre comparable entre 2024-2025 et 2026.",
+  "prudence": "comparaisons 2026 vs 2024-2025 possibles, à interpréter avec la prudence d'usage liée à la différence de provenance."
+ },
+ "tableau_de_bord_trusted_flagger": {
+  "perimetre": "strictement 2026 (date du signalement 3018)",
+  "source": "Signalements RS - 2026.xlsx ; données analytiques anonymisées (aucune donnée personnelle) dans trusted_flagger_2026.json",
+  "indicateur_principal": "nombre de signalements envoyés (les relances ne sont jamais additionnées aux signalements)",
+  "relances": "colonnes « Date de relance/appel » et « Relance TikTok » ; un signalement relancé compte une fois (signalements relancés), chaque relance compte dans le total des relances",
+  "categories_reponse": "colonne « Décision de la plateforme », libellés exacts non modifiés ; cellule vide = « Non renseigné » (distinct de « Pas de réponse »)",
+  "thematiques": "colonne « Thématiques », multi-valeurs (parsing CSV, libellés exacts), non exclusives",
+  "types_de_reponse": "action et refus = réponse de la plateforme ; sans_reponse = « Pas de réponse »/« Aucune réponse » ; non_abouti = URL introuvable, manque d'informations, 3018 non habilité, accusé de réception, etc. (non comptés comme réponse) ; mapping catégorie→type exposé dans trusted_flagger_2026.json",
+  "taux": {
+   "taux_non_renseignement": "non renseignés / total signalements envoyés",
+   "taux_reponse": "réponses (action + refus) / signalements renseignés",
+   "taux_refus": "refus / réponses",
+   "taux_relance": "signalements relancés (distincts) / total signalements envoyés"
+  },
+  "delais": "date de réponse (Q) − date d'envoi (K), en jours, uniquement si les deux dates sont valides et le délai ≥ 0 ; le nombre de lignes utilisées est affiché",
+  "division_par_zero": "un taux non calculable est affiché « N/A » (jamais une erreur)",
+  "exclus": "pas d'analyse par juriste, pas de classement ni de performance individuelle, pas de CRM, pas de données antérieures à 2026"
+ },
+ "etp": {
+  "source": "Octime — édition Temps de base",
+  "champ_retenu": "Temps dû initial",
+  "formule": "1 ETP = 151,67 heures par mois (35 heures par semaine × 52 ÷ 12). Le « 5 » de l'ancienne note correspondait à 5 jours par semaine, et non à 5 heures par jour.",
+  "nature": "ETP théorique issu des cycles",
+  "usage": "Les ETP n'apparaissent que dans « Synthèse » (dernier mois complet) et « ETP et activité » (analyse détaillée). Ils ne constituent ni une mesure de productivité ni un indicateur individuel.",
+  "limites": [
+   "ne mesure pas la présence réelle",
+   "ne mesure pas le temps exclusivement consacré à l'écoute",
+   "ne constitue pas un indicateur individuel de performance"
+  ],
+  "perimetre": "janvier 2025 à juin 2026 ; aucune valeur 2024 (n.d.) ; juin 2026 partiel (non extrapolé)",
+  "ip_procureur": "procureur, CRIP, OFMIN et OCRTEH ne sont pas exclusifs : une même situation peut viser plusieurs autorités ; ne jamais les additionner en un total de situations uniques. « Situations IPS » reste l'indicateur global."
+ }
 }
